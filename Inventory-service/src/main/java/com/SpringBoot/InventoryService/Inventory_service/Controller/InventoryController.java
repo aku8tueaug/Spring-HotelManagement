@@ -75,8 +75,8 @@ public class InventoryController {
         return ResponseEntity.ok("Rooms restored successfully");
     }
 
-    @GetMapping("/hotels")
-    public ResponseEntity<InventoryDTO> findByHotelIdAndRoomType(
+    @GetMapping("/hotelsAndRoomType")
+    public ResponseEntity<InventoryDTO> getInventoryByHotelIdAndRoomType(
             @RequestParam Long hotelId,
             @RequestParam String roomType)
     {

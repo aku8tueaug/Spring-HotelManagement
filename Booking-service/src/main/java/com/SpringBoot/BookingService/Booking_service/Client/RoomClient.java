@@ -5,9 +5,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 
+import java.util.List;
+
 @HttpExchange
 public interface RoomClient {
 
-    @GetExchange("/rooms/{id}")
-    public RoomDTO getRoomById(@PathVariable("id") Long id);
+    @GetExchange("/rooms/{roomNumber}")
+    public RoomDTO getRoomByRoomNumber(@PathVariable("roomNumber") String roomNumber);
+
+    @GetExchange("/rooms/type/{roomType}")
+    public List<RoomDTO> getRoomByType(@PathVariable("roomType") String roomType);
 }

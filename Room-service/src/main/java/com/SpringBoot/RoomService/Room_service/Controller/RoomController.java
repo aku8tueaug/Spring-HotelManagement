@@ -64,6 +64,12 @@ public class RoomController {
             return ResponseEntity.ok(rooms);
 
     }
+    @GetMapping("/{roomNumber}")
+    public ResponseEntity<?> getRoomByRoomNumber(@PathVariable("roomNumber") String roomNumber)
+    {
+        return ResponseEntity.ok(roomRepository.findByRoomNumber(roomNumber));
+    }
+
 
 }
 

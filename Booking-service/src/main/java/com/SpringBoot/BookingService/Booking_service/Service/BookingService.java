@@ -6,11 +6,14 @@ import com.SpringBoot.BookingService.Booking_service.Entity.BookingStatus;
 import com.SpringBoot.BookingService.Booking_service.Repository.BookingRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public interface BookingService {
     BookingResponseDTO createBooking(BookingRequestDTO request);
     BookingResponseDTO cancelBooking(Long bookingId);
     BookingResponseDTO getBookingById(Long bookingId);
-    BookingResponseDTO getBookingByStatus(BookingStatus bookingStatus);
-    BookingResponseDTO getBookingWithRoomId(Long roomId);
+    List<BookingResponseDTO> getBookingsByStatus(String bookingStatus);
+//    BookingResponseDTO getBookingWithRoomId(Long roomId);
+    BookingResponseDTO getBookingByRoomNumber(String roomNumber);
 }

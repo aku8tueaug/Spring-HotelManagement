@@ -13,34 +13,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public interface AvailabilityService{
-      public AvailabilityResponseDTO getAvailableRoomByHotelId(Long hotelId);
-      public  AvailabilityResponseDTO getAvailableRoomsByRoomTypes(String roomType);
-      public AvailabilityResponseDTO getAvailableRoomsByHotelIdAndRoomType(Long hotelId, String roomType);
+      public List<AvailabilityResponseDTO> getAvailableRoomByHotelId(Long hotelId);//It should return list of rooms with hotelID like map
+      public  List<AvailabilityResponseDTO> getAvailableRoomsByRoomTypes(String roomType);//It should return List of count of each room type with hotel id
+      public AvailabilityResponseDTO getAvailableRoomsByHotelIdAndRoomType(Long hotelId, String roomType); // it should return only available room
+      public AvailabilityResponseDTO checkRoomAvailabilityBetweenDates(Long hotelId,String roomTypeStr,LocalDate checkIn,LocalDate checkOut);
 }
-
-//@Service
-//@RequiredArgsConstructor
-//public class AvailabilityService {
-
-//    private final InventoryClient inventoryClient;
-//    private final BookingRepository bookingRepository;
-
-    /**
-     * Returns available room counts per type for a hotel
-     * between from (inclusive) and to (exclusive).
-     */
-//    public Map<RoomType, Integer> findAvailableByType(Long hotelId, LocalDate from, LocalDate to) {
-//        // 1. Static totals
-//        List<InventoryDTO> inventories = inventoryClient.getByHotelId(hotelId);
-//        Map<RoomType, Integer> totals = inventories.stream()
-////                .collect(Collectors.toMap(InventoryDTO::roomType, InventoryDTO::totalRooms));
-//                .collect(Collectors.toMap(InventoryDTO::roomType, InventoryDTO::totalRooms));
-//        // 2. Subtract booked counts
-//        for (InventoryDTO inv : inventories) {
-//            long bookedCount = bookingRepository.findConflicts(inv.roomType(), from, to).size();
-//            totals.compute(inv.roomType(),
-//                    (rt, tot) -> Math.max(0, tot - (int)bookedCount));
-//        }
-//        return totals;
-//    }
-//}

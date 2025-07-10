@@ -26,7 +26,7 @@ public class Booking {
     private Long hotelId;
 
     @NotNull(message = "Room ID is required")
-    private Long roomId;
+    private String roomNumber;
 
     @NotNull(message = "Room type is required")
     @Enumerated(EnumType.STRING)
