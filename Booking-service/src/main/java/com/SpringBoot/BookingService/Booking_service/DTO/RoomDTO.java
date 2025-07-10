@@ -6,6 +6,6 @@ public record RoomDTO(
         String roomNumber,
         String roomType,
         Double basePrice,
-        boolean isAvailable
+        boolean available
 ) {
 }

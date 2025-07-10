@@ -18,7 +18,7 @@ public class Room {
     Long hotelId;
 
     @NotBlank(message = "Room Number is required")
-    String room_number;
+    String roomNumber;
 
     @NotNull(message = "Room Type must be specified")
     @Enumerated(EnumType.STRING)
@@ -35,10 +35,10 @@ public class Room {
     public Room() {
     }
 
-    public Room(Long roomId, Long hotelId, String room_number, RoomType roomType, Double basePrice, boolean isAvailable) {
+    public Room(Long roomId, Long hotelId, String roomNumber, RoomType roomType, Double basePrice, boolean isAvailable) {
         this.roomId = roomId;
         this.hotelId = hotelId;
-        this.room_number = room_number;
+        this.roomNumber = roomNumber;
         this.roomType = roomType;
         this.basePrice = basePrice;
         this.isAvailable = isAvailable;
@@ -60,12 +60,12 @@ public class Room {
         this.hotelId = hotelId;
     }
 
-    public String getRoom_number() {
-        return room_number;
+    public String getRoomNumber() {
+        return roomNumber;
     }
 
-    public void setRoom_number(String room_number) {
-        this.room_number = room_number;
+    public void setRoomNumber(String roomNumber) {
+        this.roomNumber = roomNumber;
     }
 
     public RoomType getRoomType() {
