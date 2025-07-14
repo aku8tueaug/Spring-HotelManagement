@@ -30,7 +30,7 @@ Each module is implemented as an independent microservice, making the system sca
 
 ### 5. **Billing Service** *(In Progress)*
 - Generate bills for confirmed bookings
-- Integrate pricing and payment logic (under development)
+- Integrate Dynamic pricing and payment logic (under development)
 
 ---
 
