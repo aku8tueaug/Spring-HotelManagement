@@ -28,9 +28,9 @@ Each module is implemented as an independent microservice, making the system sca
 - Validate hotel and room availability
 - Update inventory upon booking confirmation
 
-### 5. **Billing Service** *(In Progress)*
+### 5. **Billing Service**
 - Generate bills for confirmed bookings
-- Integrate Dynamic pricing and payment logic (under development)
+- Integrate Dynamic pricing and payment logic
 
 ---
 
