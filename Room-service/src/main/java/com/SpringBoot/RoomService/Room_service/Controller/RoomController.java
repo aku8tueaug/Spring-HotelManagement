@@ -1,5 +1,6 @@
 package com.SpringBoot.RoomService.Room_service.Controller;
 
+import com.SpringBoot.RoomService.Room_service.DTO.CreateMultipleRoomRequestDTO;
 import com.SpringBoot.RoomService.Room_service.DTO.Hotel;
 import com.SpringBoot.RoomService.Room_service.HTTPClient.HotelClient;
 import com.SpringBoot.RoomService.Room_service.Repository.RoomRepository;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -42,7 +44,31 @@ public class RoomController {
                     .body(savedRoom);
     }
 
+    @PostMapping("/multiRoomAdd")
+    public ResponseEntity<?> addMultipleRoom(@RequestBody @Valid CreateMultipleRoomRequestDTO multipleRoomRequestDTO) {
+        Hotel hotel = hotelClient.getHotelById(multipleRoomRequestDTO.HotelId());
 
+        RoomType roomType = RoomType.valueOf(multipleRoomRequestDTO.roomType().toUpperCase());
+        List<Room> rooms = new ArrayList<>();
+        for(int i=0;i< multipleRoomRequestDTO.noOfRoomToBeCreate();i++)
+        {
+            String roomNumber = multipleRoomRequestDTO.HotelId().toString()
+                                + roomType.toString().substring(0,2)
+                                + multipleRoomRequestDTO.floorNumber().toString()
+                                + String.format("%03d", (multipleRoomRequestDTO.idStart()+i));
+            Room room = Room.builder()
+                    .hotelId(multipleRoomRequestDTO.HotelId())
+                    .roomNumber(roomNumber)
+                    .roomType(roomType)
+                    .isAvailable(multipleRoomRequestDTO.isAvailable())
+                    .build();
+            rooms.add(room);
+        }
+        List<Room> savedRoom =  roomRepository.saveAll(rooms);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(savedRoom);
+    }
     @GetMapping("/available")
     public List<Room> getAvailableRooms()
     {

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -46,5 +47,13 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> getBookingByRoomNumber(
             @PathVariable("roomNumber") String roomNumber) {
         return ResponseEntity.ok(bookingService.getBookingByRoomNumber(roomNumber));
+    }
+    @PutMapping("/additionalCharges")
+    public ResponseEntity<BookingResponseDTO> addAdditionalCharges(
+            @RequestParam Long bookingId,
+            @RequestParam BigDecimal extraCharges) {
+
+        BookingResponseDTO updatedBooking = bookingService.addAdditionalCharges(bookingId, extraCharges);
+        return ResponseEntity.ok(updatedBooking);
     }
 }

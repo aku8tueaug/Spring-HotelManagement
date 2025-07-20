@@ -4,11 +4,19 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
+@Table(
+        name = "room",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"room_number"})
+        }
+)
 public class Room {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,71 +32,7 @@ public class Room {
     @Enumerated(EnumType.STRING)
     RoomType roomType;
 
-
-    @NotNull(message = "Base price is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Base price must be greater than 0")
-    Double basePrice;
-
     @NotNull(message = "Availability status is required")
     boolean isAvailable;
 
-    public Room() {
-    }
-
-    public Room(Long roomId, Long hotelId, String roomNumber, RoomType roomType, Double basePrice, boolean isAvailable) {
-        this.roomId = roomId;
-        this.hotelId = hotelId;
-        this.roomNumber = roomNumber;
-        this.roomType = roomType;
-        this.basePrice = basePrice;
-        this.isAvailable = isAvailable;
-    }
-
-    public Long getRoomId() {
-        return roomId;
-    }
-
-    public void setRoomId(Long roomId) {
-        this.roomId = roomId;
-    }
-
-    public Long getHotelId() {
-        return hotelId;
-    }
-
-    public void setHotelId(Long hotelId) {
-        this.hotelId = hotelId;
-    }
-
-    public String getRoomNumber() {
-        return roomNumber;
-    }
-
-    public void setRoomNumber(String roomNumber) {
-        this.roomNumber = roomNumber;
-    }
-
-    public RoomType getRoomType() {
-        return roomType;
-    }
-
-    public void setRoomType(RoomType roomType) {
-        this.roomType = roomType;
-    }
-
-    public Double getBasePrice() {
-        return basePrice;
-    }
-
-    public void setBasePrice(Double basePrice) {
-        this.basePrice = basePrice;
-    }
-
-    public boolean isAvailable() {
-        return isAvailable;
-    }
-
-    public void setAvailable(boolean available) {
-        isAvailable = available;
-    }
 }

@@ -6,6 +6,7 @@ import com.SpringBoot.BookingService.Booking_service.Entity.BookingStatus;
 import com.SpringBoot.BookingService.Booking_service.Repository.BookingRepository;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -16,4 +17,5 @@ public interface BookingService {
     List<BookingResponseDTO> getBookingsByStatus(String bookingStatus);
 //    BookingResponseDTO getBookingWithRoomId(Long roomId);
     BookingResponseDTO getBookingByRoomNumber(String roomNumber);
+    BookingResponseDTO addAdditionalCharges(Long bookingId, BigDecimal extraCharges);
 }
