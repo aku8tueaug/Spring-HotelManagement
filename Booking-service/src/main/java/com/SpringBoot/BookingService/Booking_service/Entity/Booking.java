@@ -10,7 +10,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Data                  // Generates getters/setters, toString, equals, hashCode
@@ -32,6 +34,12 @@ public class Booking {
     @Enumerated(EnumType.STRING)
     private RoomType roomType;
 
+    @ManyToMany
+    @JoinTable(name = "PersonBooking",
+            joinColumns = @JoinColumn(name = "bookingId"),
+            inverseJoinColumns = @JoinColumn(name = "personId"))
+    private List<Person> guests;
+
     @NotBlank(message = "Guest name is required")
     private String guestName;
 
@@ -44,4 +52,6 @@ public class Booking {
     @NotNull
     @Enumerated(EnumType.STRING)
     private BookingStatus status;
+
+    private BigDecimal price;
 }

@@ -5,7 +5,6 @@ public record RoomDTO(
         Long hotelId,
         String roomNumber,
         String roomType,
-        Double basePrice,
         boolean isAvailable
 ) {
 }

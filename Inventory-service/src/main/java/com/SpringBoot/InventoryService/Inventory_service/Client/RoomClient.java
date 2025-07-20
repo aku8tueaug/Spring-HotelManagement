@@ -9,6 +9,6 @@ import org.springframework.web.service.annotation.HttpExchange;
 @HttpExchange
 public interface RoomClient {
 
-    @GetExchange("/rooms/{type}")
-    public RoomDTO getRoomByType(@PathVariable("roomId") String roomId);
+    @GetExchange("/rooms/{roomType}")
+    public RoomDTO getRoomByType(@PathVariable("roomType") String roomType);
 }
