@@ -14,6 +14,7 @@ import com.SpringBoot.BookingService.Booking_service.Service.BookingService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -69,12 +70,8 @@ public class BookingServiceImplementation implements BookingService {
             throw new IllegalArgumentException("Room already booked for given dates");
         }
 
-        // 3. Deduct inventory
-        inventoryClient.deductRooms(req.hotelId(), req.roomType().toString(), 1);
 
 
-
-        // 4. Save booking
         Booking booking = Booking.builder()
                 .hotelId(req.hotelId())
                 .roomNumber(req.roomNumber())
@@ -83,35 +80,67 @@ public class BookingServiceImplementation implements BookingService {
                 .guestName(req.guests().get(0).getName())
                 .checkInDate(req.checkInDate())
                 .checkOutDate(req.checkOutDate())
-                .status(BookingStatus.CONFIRMED)
+                .status(BookingStatus.INITIATED)
                 .build();
 
-        for(Person person : req.guests())
-        {
-//            person.setMobileNumber(
-//                    person.getCountryCode()+
-//                    person.getMobileNumber());
 
-            Optional<Person> person1 =  personRepository.findByNameAndDOBAndPincodeAndAddressAndMobileNumber(person.getName(),
+        List<Person> guestsToAssociate = new ArrayList<>();
+
+        for (Person person : req.guests()) {
+            Optional<Person> existingPerson = personRepository.findByNameAndDOBAndPincodeAndAddressAndMobileNumber(
+                    person.getName(),
                     person.getDOB(),
                     person.getPincode(),
                     person.getAddress(),
-                    person.getMobileNumber());
+                    person.getMobileNumber()
+            );
 
-            if(person1.isEmpty())
-            {
-                personRepository.save(person);
-            }
-
+            Person finalPerson = existingPerson.orElseGet(() -> personRepository.save(person));
+            guestsToAssociate.add(finalPerson);
         }
 
-        booking = bookingRepository.save(booking);
+// Associate the full guest list with the booking
+        booking.setGuests(guestsToAssociate);
 
-        // 5. Build response (you can calculate price via roomDTO.getBasePrice() if needed)
-        BigDecimal price = pricingClient.getPriceByBookingId(booking.getBookingId());
-
-        booking.setPrice(price);
+        //Booking Save Initiated
         bookingRepository.save(booking);
+        try {
+            //deduct rooms
+            inventoryClient.deductRooms(req.hotelId(), req.roomType().toString(), 1);
+            // Save Booking and marking it Reserved.
+            booking.setStatus(BookingStatus.RESERVED);
+            booking = bookingRepository.save(booking);
+            //Get Price from Billing Service
+            BigDecimal price = pricingClient.getPriceByBookingId(booking.getBookingId());
+
+            //Setting up the price and Marking it PRICED
+            booking.setPrice(price);
+            booking.setStatus(BookingStatus.PRICED);
+            booking = bookingRepository.save(booking);
+
+            //Only confirm Booking can go for Payment
+            booking.setStatus(BookingStatus.CONFIRMED);
+            bookingRepository.save(booking);
+        } catch (Exception e) {
+
+            try {
+                if(booking.getStatus() == BookingStatus.RESERVED)
+                    inventoryClient.restoreRooms(req.hotelId(), req.roomType().toString(), 1);
+            } catch (Exception restoreEx) {
+                // Log for manual intervention
+                throw new RuntimeException("Room Restoration has been failed, Restore it manually" +
+                        "Hotel Id : " + req.hotelId() + " Room Type : " + req.roomType());
+            }
+            // Compensation
+            booking.setStatus(BookingStatus.CANCELED);
+            bookingRepository.save(booking);
+
+
+            throw new RuntimeException("Booking failed." + e);
+        }
+
+
+
         return mapBookingToBookingResponseDTO(booking);
 
     }
