@@ -1,76 +1,61 @@
 package com.SpringBoot.HotelService.Hotel_service.Entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder
+@Table(name = "hotels",
+        indexes = {
+                @Index(name = "idx_hotel_name", columnList = "name"),
+                @Index(name = "idx_hotel_city", columnList = "hotel_city")
+        },
+        uniqueConstraints = { @UniqueConstraint(name = "uk_name_city", columnNames = {"name","hotel_city"})}
+        )
 public class Hotel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Hotel name is required")
+    @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @NotBlank(message = "Address is required")
-    private String address;
+    @Embedded
+    private Address address;
 
-    @NotBlank(message = "City is required")
-    private String city;
+    @Column(name = "rating", nullable = false)
+    private Integer rating; // 1–5
 
-    @NotBlank(message = "Contact number is required")
+    @Column(name = "description", length = 500)
+    private String description;
+
+    @Column(name = "contact_number", length = 15)
     private String contactNumber;
 
-    public Hotel(Long id, String name, String address, String city, String contactNumber) {
-        this.id = id;
-        this.name = name;
-        this.address = address;
-        this.city = city;
-        this.contactNumber = contactNumber;
-    }
+    @Column(name = "email", unique = true, length = 100)
+    private String email;
 
-    public Hotel() {
-    }
+    @Column(name = "image_url")
+    private String imageUrl; // S3/CDN URL
 
-    public Long getId() {
-        return id;
-    }
+    @Column(name = "is_active", nullable = false)
+    private Boolean active = true;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
-    public String getName() {
-        return name;
-    }
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public String getCity() {
-        return city;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public String getContactNumber() {
-        return contactNumber;
-    }
-
-    public void setContactNumber(String contactNumber) {
-        this.contactNumber = contactNumber;
-    }
 }
