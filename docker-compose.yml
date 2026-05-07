@@ -7,11 +7,11 @@ services:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: HotelManagement
       MYSQL_USER: admin
       MYSQL_PASSWORD: admin
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - hotel-net
 

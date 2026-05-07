@@ -34,6 +34,7 @@
 		<module>Inventory-service</module>
 		<module>Booking-service</module>
 		<module>Billing-service</module>
+		<module>Auth-Service</module>
 	</modules>
 	<properties>
 		<java.version>17</java.version>

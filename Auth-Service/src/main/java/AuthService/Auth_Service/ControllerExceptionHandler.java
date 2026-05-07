@@ -1,19 +1,17 @@
-package com.SpringBoot.HotelService.Hotel_service;
+package AuthService.Auth_Service;
 
-import com.SpringBoot.HotelService.Hotel_service.Exception.ApiError;
-import com.SpringBoot.HotelService.Hotel_service.Exception.ResourceNotFoundException;
+
+import AuthService.Auth_Service.Exception.ApiError;
+import AuthService.Auth_Service.Exception.ResourceNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class ControllerExceptionHandler {

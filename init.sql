@@ -1,0 +1,6 @@
+CREATE DATABASE hotel_db;
+CREATE DATABASE booking_db;
+CREATE DATABASE inventory_db;
+CREATE DATABASE billing_db;
+CREATE DATABASE auth_db;
+CREATE DATABASE room_db;

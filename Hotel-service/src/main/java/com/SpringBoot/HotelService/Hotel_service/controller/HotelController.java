@@ -1,69 +1,73 @@
 package com.SpringBoot.HotelService.Hotel_service.controller;
 
 
-
-import com.SpringBoot.HotelService.Hotel_service.Entity.Hotel;
-import com.SpringBoot.HotelService.Hotel_service.Repository.HotelRepository;
+import com.SpringBoot.HotelService.Hotel_service.DTO.HotelCreateRequestDTO;
+import com.SpringBoot.HotelService.Hotel_service.DTO.HotelResponseDTO;
+import com.SpringBoot.HotelService.Hotel_service.DTO.HotelUpdateRequestDTO;
+import com.SpringBoot.HotelService.Hotel_service.Service.HotelService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/hotels")
+@RequiredArgsConstructor
+@Validated
 public class HotelController {
 
-    private final HotelRepository hotelRepository;
+    private final HotelService hotelService;
 
-    public HotelController(HotelRepository hotelRepository)
-    {
-        this.hotelRepository = hotelRepository;
-    }
-
+    // CREATE
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<Hotel> createHotel(@Valid @RequestBody Hotel hotel) {
-        return ResponseEntity.ok(hotelRepository.save(hotel));
+    public ResponseEntity<HotelResponseDTO> createHotel(
+            @Valid @RequestBody HotelCreateRequestDTO request) {
+
+        HotelResponseDTO response = hotelService.createHotel(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    // GET BY ID
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     @GetMapping("/{id}")
-    public ResponseEntity<?> getHotelById(@PathVariable Long id) {
-        try {
-            Hotel hotel = hotelRepository.findById(id)
-                    .orElseThrow(() -> new NoSuchElementException("Hotel not found with id: " + id));
-            return ResponseEntity.ok(hotel);
-        } catch (NoSuchElementException ex) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
-        }
+    public ResponseEntity<HotelResponseDTO> getHotelById(
+            @PathVariable @Min(1) Long id) {
+
+        HotelResponseDTO response = hotelService.getHotelById(id);
+
+        return ResponseEntity.ok(response);
     }
 
+    // UPDATE (Partial update)
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}")
+    public ResponseEntity<HotelResponseDTO> updateHotel(
+            @PathVariable @Min(1) Long id,
+            @Valid @RequestBody HotelUpdateRequestDTO request) {
+
+        HotelResponseDTO response = hotelService.updateHotel(id, request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     @GetMapping
-    public List<Hotel> getAllHotels() {
-        return hotelRepository.findAll();
-    }
+    public ResponseEntity<Page<HotelResponseDTO>> getAllHotels(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String direction) {
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteHotel(@PathVariable Long id) {
-        if (!hotelRepository.existsById(id)) {
-            throw new NoSuchElementException("Hotel not found with id: " + id);
-        }
-        hotelRepository.deleteById(id);
-        return ResponseEntity.ok("Hotel deleted with id: " + id);
-    }
+        Page<HotelResponseDTO> response =
+                hotelService.getAllHotels(page, size, sortBy, direction);
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Hotel> updateHotel(@PathVariable Long id, @RequestBody Hotel updated) {
-        Hotel hotel = hotelRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Hotel not found with id: " + id));
-
-        hotel.setName(updated.getName());
-        hotel.setAddress(updated.getAddress());
-        hotel.setCity(updated.getCity());
-        hotel.setContactNumber(updated.getContactNumber());
-
-        return ResponseEntity.ok(hotelRepository.save(hotel));
+        return ResponseEntity.ok(response);
     }
 }
-
