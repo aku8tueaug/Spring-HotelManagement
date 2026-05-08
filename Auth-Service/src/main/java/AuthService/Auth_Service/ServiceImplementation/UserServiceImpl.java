@@ -20,7 +20,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @CacheEvict(value = "users", key = "#username")
     public void changePassword(String username, String currentPassword, String newPassword) {
-        AppUser user = userRepository.findByUsername(username)
+        AppUser user = userRepository.findByUserName(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // verify current password
@@ -36,7 +36,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @CacheEvict(value = "users", key = "#username")
     public void updateRole(String username, String role) {
-        AppUser user = userRepository.findByUsername(username)
+        AppUser user = userRepository.findByUserName(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         user.setRole(role);
@@ -47,7 +47,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void createUser(String username, String password, String role) {
 
-        if (userRepository.findByUsername(username).isPresent()) {
+        if (userRepository.findByUserName(username).isPresent()) {
             throw new RuntimeException("Username already exists");
         }
 
@@ -63,7 +63,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @CacheEvict(value = "users", key = "#username")
     public void deactivateUser(String username) {
-        AppUser user = userRepository.findByUsername(username)
+        AppUser user = userRepository.findByUserName(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setActive(false);
         userRepository.save(user);

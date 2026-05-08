@@ -20,7 +20,7 @@ public class DataInitializer {
     CommandLineRunner initUsers() {
         return args -> {
 
-            if (userRepository.findByUsername("admin").isEmpty()) {
+            if (userRepository.findByUserName("admin").isEmpty()) {
                 userRepository.save(
                         AppUser.builder()
                                 .userName("admin")
