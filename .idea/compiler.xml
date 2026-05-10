@@ -7,7 +7,6 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="Auth-Service" />
       </profile>
       <profile name="Annotation profile for HotelManagement" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -21,6 +20,15 @@
         <module name="Hotel-service" />
         <module name="Inventory-service" />
         <module name="Room-service" />
+      </profile>
+      <profile name="Annotation profile for Auth-Service" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar" />
+        </processorPath>
+        <module name="Auth-Service" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
