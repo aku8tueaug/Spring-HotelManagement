@@ -6,6 +6,7 @@ import com.SpringBoot.HotelService.Hotel_service.DTO.HotelUpdateRequestDTO;
 import com.SpringBoot.HotelService.Hotel_service.Entity.Address;
 import com.SpringBoot.HotelService.Hotel_service.Entity.Hotel;
 import com.SpringBoot.HotelService.Hotel_service.Exception.ResourceNotFoundException;
+import com.SpringBoot.HotelService.Hotel_service.HTTPClient.RoomClient;
 import com.SpringBoot.HotelService.Hotel_service.Mapper.HotelMapper;
 import com.SpringBoot.HotelService.Hotel_service.Repository.HotelRepository;
 import com.SpringBoot.HotelService.Hotel_service.Service.HotelService;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class HotelServiceImpl implements HotelService {
 
     private final HotelRepository hotelRepository;
+    private final RoomClient roomClient;
 
     @Override
     public HotelResponseDTO createHotel(HotelCreateRequestDTO request) {
@@ -42,7 +44,7 @@ public class HotelServiceImpl implements HotelService {
     @Override
     public HotelResponseDTO updateHotel(Long id, HotelUpdateRequestDTO dto) {
         log.info("Updating hotel with id: {}", id);
-        Hotel hotel = hotelRepository.findById(id)
+        Hotel hotel = hotelRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> {  log.error("Hotel not found with id: {}", id);
                     return new ResourceNotFoundException("Hotel not found with id: " + id);
                 });
@@ -113,7 +115,7 @@ public class HotelServiceImpl implements HotelService {
 
         log.info("Fetching hotel with id: {}", id);
 
-        Hotel hotel = hotelRepository.findById(id)
+        Hotel hotel = hotelRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> {
                     log.error("Hotel not found with id: {}", id);
                     return new ResourceNotFoundException("Hotel not found with id: " + id);
@@ -132,8 +134,41 @@ public class HotelServiceImpl implements HotelService {
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<Hotel> hotelPage = hotelRepository.findAll(pageable);
+        Page<Hotel> hotelPage = hotelRepository.findByActiveTrue(pageable);
 
         return hotelPage.map(HotelMapper::toResponseDTO);
+    }
+
+    @Override
+    public HotelResponseDTO deleteHotelById(Long id)
+    {
+        Hotel hotel = hotelRepository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> {
+                    log.error("Hotel not found with id: {}", id);
+                    return new ResourceNotFoundException("Hotel not found with id: " + id);
+                });
+
+        try {
+            roomClient.deactivateRoomsByHotelId(id);
+        } catch (Exception ex) {
+            log.error(
+                    "Room deactivation failed for hotelId={}",
+                    id,
+                    ex);
+            throw ex;
+        }
+
+        try {
+            hotel.setActive(false);
+            hotelRepository.save(hotel);
+        } catch (Exception ex) {
+            log.error(
+                    "Hotel deactivation failed after room cleanup. hotelId={}",
+                    id,
+                    ex);
+            throw ex;
+        }
+
+        return HotelMapper.toResponseDTO(hotel);
     }
 }

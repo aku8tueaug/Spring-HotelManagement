@@ -1,7 +1,7 @@
-package com.SpringBoot.RoomService.Room_service.Configuration;
+package com.SpringBoot.HotelService.Hotel_service.ClientConfiguration;
 
-import com.SpringBoot.RoomService.Room_service.HTTPClient.HotelClient;
-import com.SpringBoot.RoomService.Room_service.Security.Jwt.JwtTokenProvider;
+import com.SpringBoot.HotelService.Hotel_service.HTTPClient.RoomClient;
+import com.SpringBoot.HotelService.Hotel_service.Security.Jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -13,12 +13,11 @@ import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 @Configuration
 @RequiredArgsConstructor
-public class HotelConfiguration {
+public class RoomClientConfiguration {
 
     private final JwtTokenProvider jwtTokenProvider;
-
     @Bean
-    public WebClient webClient(@Value("${spring.hotelService.url}") String baseUrl)
+    public WebClient webClient(@Value("${spring.roomService.url}") String baseUrl)
     {
         return WebClient.builder()
                 .baseUrl(baseUrl)
@@ -33,10 +32,14 @@ public class HotelConfiguration {
                     return next.exchange(filteredRequest);
                 }).build();
     }
+
     @Bean
-    public HotelClient hotelClient(WebClient webClient) {
+    public RoomClient roomClient(WebClient webClient)
+    {
         WebClientAdapter adapter = WebClientAdapter.create(webClient);
         HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(adapter).build();
-        return factory.createClient(HotelClient.class);
+        return factory.createClient(RoomClient.class);
     }
+
+
 }

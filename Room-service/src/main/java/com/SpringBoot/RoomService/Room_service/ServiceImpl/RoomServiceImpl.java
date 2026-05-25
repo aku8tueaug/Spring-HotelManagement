@@ -1,18 +1,21 @@
 package com.SpringBoot.RoomService.Room_service.ServiceImpl;
 
 import com.SpringBoot.RoomService.Room_service.DTO.CreateMultipleRoomRequestDTO;
-import com.SpringBoot.RoomService.Room_service.DTO.Hotel;
+import com.SpringBoot.RoomService.Room_service.DTO.CreateRoomRequestDTO;
+import com.SpringBoot.RoomService.Room_service.DTO.ResponseRoomDTO;
+import com.SpringBoot.RoomService.Room_service.DTO.UpdateRoomRequestDTO;
 import com.SpringBoot.RoomService.Room_service.Entity.Room;
+import com.SpringBoot.RoomService.Room_service.Entity.RoomStatus;
 import com.SpringBoot.RoomService.Room_service.Entity.RoomType;
+import com.SpringBoot.RoomService.Room_service.Exception.ResourceNotFoundException;
 import com.SpringBoot.RoomService.Room_service.HTTPClient.HotelClient;
 import com.SpringBoot.RoomService.Room_service.Repository.RoomRepository;
 import com.SpringBoot.RoomService.Room_service.Service.RoomService;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,63 +30,127 @@ public class RoomServiceImpl implements RoomService {
 
 
     @Override
-    public Room addRoom(Room room) {
-        hotelClient.getHotelById(room.getHotelId());
-        return roomRepository.save(room);
+    public ResponseRoomDTO addRoom(CreateRoomRequestDTO roomRequestDTO) {
+        hotelClient.validateHotelExists(roomRequestDTO.hotelId());
+
+        Room room = Room.builder()
+                .hotelId(roomRequestDTO.hotelId())
+                .roomNumber(roomRequestDTO.roomNumber())
+                .roomType(roomRequestDTO.roomType())
+                .status(roomRequestDTO.roomStatus())
+                .build();
+        return  entityToResponseRoomDTO(roomRepository.save(room));
     }
 
     @Override
-    public List<Room> addMultipleRoom(CreateMultipleRoomRequestDTO multipleRoomRequestDTO) {
-        hotelClient.getHotelById(multipleRoomRequestDTO.HotelId());
-
-        RoomType roomType = RoomType.valueOf(multipleRoomRequestDTO.roomType().toUpperCase());
+    public List<ResponseRoomDTO> addMultipleRoom(CreateMultipleRoomRequestDTO multipleRoomRequestDTO) {
+        hotelClient.validateHotelExists(multipleRoomRequestDTO.hotelId());
         List<Room> rooms = new ArrayList<>();
-        for(int i=0;i< multipleRoomRequestDTO.noOfRoomToBeCreate();i++)
+        for(int i=0;i< multipleRoomRequestDTO.roomCount();i++)
         {
-            String roomNumber = multipleRoomRequestDTO.HotelId().toString()
-                    + roomType.toString().substring(0,2)
-                    + multipleRoomRequestDTO.floorNumber().toString()
-                    + String.format("%03d", (multipleRoomRequestDTO.idStart()+i));
+            int generatedRoomNumber = multipleRoomRequestDTO.startRoomNumber()+i;
+
             Room room = Room.builder()
-                    .hotelId(multipleRoomRequestDTO.HotelId())
-                    .roomNumber(roomNumber)
-                    .roomType(roomType)
-                    .isAvailable(multipleRoomRequestDTO.isAvailable())
+                    .hotelId(multipleRoomRequestDTO.hotelId())
+                    .roomNumber(String.valueOf(generatedRoomNumber))
+                    .roomType(multipleRoomRequestDTO.roomType())
+                    .status(multipleRoomRequestDTO.roomStatus())
                     .build();
             rooms.add(room);
         }
-        return roomRepository.saveAll(rooms);
+
+        return entityToResponseRoomDTO(roomRepository.saveAll(rooms));
+
     }
 
     @Transactional(readOnly = true)
     @Override
-    public List<Room> getAvailableRooms() {
-        return roomRepository.findByIsAvailableTrue();
+    public List<ResponseRoomDTO> getActiveRooms() {
+        return entityToResponseRoomDTO( roomRepository.findByStatus(RoomStatus.ACTIVE));
     }
 
     @Transactional(readOnly = true)
     @Override
-    public List<Room> getRoomByRoomType(String roomType) {
-        RoomType roomType1 = RoomType.valueOf(roomType.toUpperCase());
-        return roomRepository.findByRoomType(roomType1);
+    public List<ResponseRoomDTO> getRoomByRoomType(RoomType roomType) {
+        return entityToResponseRoomDTO(  roomRepository.findByRoomType(roomType));
     }
 
     @Transactional(readOnly = true)
     @Override
-    public List<Room> getRoomByHotelId(Long hotelId) {
-        hotelClient.getHotelById(hotelId);
-        return roomRepository.findByHotelId(hotelId);   // return a list of room List<Room>
+    public List<ResponseRoomDTO> getRoomByHotelId(Long hotelId) {
+        hotelClient.validateHotelExists(hotelId);
+        return entityToResponseRoomDTO(roomRepository.findByHotelId(hotelId));   // return a list of room List<Room>
     }
 
     @Transactional(readOnly = true)
     @Override
-    public Room getRoomByRoomNumber(String roomNumber) {
-        return roomRepository.findByRoomNumber(roomNumber);
+    public ResponseRoomDTO getRoomByRoomNumber(String roomNumber) {
+        return entityToResponseRoomDTO( roomRepository.findByRoomNumber(roomNumber).orElseThrow(
+                ()->new NoResourceFoundException("Room not found with number: " + roomNumber)
+        ));
     }
 
     @Transactional(readOnly = true)
     @Override
-    public List<Room> getAllRooms() {
-        return roomRepository.findAll();
+    public List<ResponseRoomDTO> getAllRooms() {
+        return entityToResponseRoomDTO( roomRepository.findAll());
+    }
+
+    @Override
+    public void deactivateRoomsByHotelId(Long hotelId) {
+
+        List<Room> rooms = roomRepository.findByHotelId(hotelId);
+        for (Room room : rooms) {
+            room.setStatus(RoomStatus.INACTIVE);
+        }
+        roomRepository.saveAll(rooms);
+    }
+
+    @Override
+    public ResponseRoomDTO updateRoom( Long roomId,UpdateRoomRequestDTO request) {
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Room not found with id: " + roomId
+                        )
+                );
+
+        if (request.roomType() != null) {
+            room.setRoomType(request.roomType());
+        }
+
+        if (request.roomStatus() != null) {
+            room.setStatus(request.roomStatus());
+        }
+
+        Room updatedRoom = roomRepository.save(room);
+
+        return entityToResponseRoomDTO(updatedRoom);
+    }
+
+
+    //Helper Functions
+
+    private ResponseRoomDTO entityToResponseRoomDTO(Room room)
+    {
+        return  new ResponseRoomDTO(
+                room.getRoomId(),
+                room.getHotelId(),
+                room.getRoomNumber(),
+                room.getRoomType(),
+                room.getStatus()
+        );
+    }
+
+    private List<ResponseRoomDTO> entityToResponseRoomDTO(List<Room> rooms)
+    {
+        List<ResponseRoomDTO> responseRoomDTOList = new ArrayList<>();
+        for(Room room : rooms)
+        {
+            responseRoomDTOList.add(entityToResponseRoomDTO(room));
+        }
+
+        return responseRoomDTOList;
     }
 }
