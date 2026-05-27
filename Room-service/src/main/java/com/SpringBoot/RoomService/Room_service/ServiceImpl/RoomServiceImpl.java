@@ -1,17 +1,16 @@
 package com.SpringBoot.RoomService.Room_service.ServiceImpl;
 
-import com.SpringBoot.RoomService.Room_service.DTO.CreateMultipleRoomRequestDTO;
-import com.SpringBoot.RoomService.Room_service.DTO.CreateRoomRequestDTO;
-import com.SpringBoot.RoomService.Room_service.DTO.ResponseRoomDTO;
-import com.SpringBoot.RoomService.Room_service.DTO.UpdateRoomRequestDTO;
+import com.SpringBoot.RoomService.Room_service.DTO.*;
 import com.SpringBoot.RoomService.Room_service.Entity.Room;
 import com.SpringBoot.RoomService.Room_service.Entity.RoomStatus;
 import com.SpringBoot.RoomService.Room_service.Entity.RoomType;
 import com.SpringBoot.RoomService.Room_service.Exception.ResourceNotFoundException;
 import com.SpringBoot.RoomService.Room_service.HTTPClient.HotelClient;
+import com.SpringBoot.RoomService.Room_service.HTTPClient.InventoryClient;
 import com.SpringBoot.RoomService.Room_service.Repository.RoomRepository;
 import com.SpringBoot.RoomService.Room_service.Service.RoomService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,8 +24,12 @@ import java.util.List;
 @Transactional
 public class RoomServiceImpl implements RoomService {
 
+    @Value("${inventory.defaultHorizonDays}")
+    private Integer defaultHorizonDays;
+
     private final RoomRepository roomRepository;
     private final HotelClient hotelClient;
+    private final InventoryClient inventoryClient;
 
 
     @Override
@@ -39,7 +42,17 @@ public class RoomServiceImpl implements RoomService {
                 .roomType(roomRequestDTO.roomType())
                 .status(roomRequestDTO.roomStatus())
                 .build();
-        return  entityToResponseRoomDTO(roomRepository.save(room));
+
+        Room savedRoom = roomRepository.save(room);
+
+        //Increase Inventory
+        if(savedRoom.getStatus() == RoomStatus.ACTIVE) {
+            inventoryClient.increaseInventory(
+                    entityToInventoryAdjustmentRequestDTO(savedRoom)
+            );
+        }
+
+        return  entityToResponseRoomDTO(savedRoom);
     }
 
     @Override
@@ -58,8 +71,16 @@ public class RoomServiceImpl implements RoomService {
                     .build();
             rooms.add(room);
         }
+        List<Room> savedRooms = roomRepository.saveAll(rooms);
 
-        return entityToResponseRoomDTO(roomRepository.saveAll(rooms));
+        //Increase Inventory
+        if(multipleRoomRequestDTO.roomStatus() == RoomStatus.ACTIVE) {
+            inventoryClient.increaseInventory(
+                    entityToInventoryAdjustmentRequestDTO(multipleRoomRequestDTO)
+            );
+        }
+
+        return entityToResponseRoomDTO(savedRooms);
 
     }
 
@@ -132,7 +153,8 @@ public class RoomServiceImpl implements RoomService {
 
     //Helper Functions
 
-    private ResponseRoomDTO entityToResponseRoomDTO(Room room)
+    private ResponseRoomDTO entityToResponseRoomDTO
+            (Room room)
     {
         return  new ResponseRoomDTO(
                 room.getRoomId(),
@@ -143,7 +165,8 @@ public class RoomServiceImpl implements RoomService {
         );
     }
 
-    private List<ResponseRoomDTO> entityToResponseRoomDTO(List<Room> rooms)
+    private List<ResponseRoomDTO> entityToResponseRoomDTO
+            (List<Room> rooms)
     {
         List<ResponseRoomDTO> responseRoomDTOList = new ArrayList<>();
         for(Room room : rooms)
@@ -153,4 +176,30 @@ public class RoomServiceImpl implements RoomService {
 
         return responseRoomDTOList;
     }
+
+    private InventoryAdjustmentRequestDTO entityToInventoryAdjustmentRequestDTO
+            (Room room)
+    {
+
+            return new InventoryAdjustmentRequestDTO(
+                    room.getHotelId(),
+                    room.getRoomType(),
+                    1,
+                    defaultHorizonDays
+            );
+    }
+
+    private InventoryAdjustmentRequestDTO entityToInventoryAdjustmentRequestDTO
+            (CreateMultipleRoomRequestDTO roomRequestDTO)
+    {
+
+        return new InventoryAdjustmentRequestDTO(
+                roomRequestDTO.hotelId(),
+                roomRequestDTO.roomType(),
+                roomRequestDTO.roomCount(),
+                defaultHorizonDays
+        );
+    }
+
+
 }

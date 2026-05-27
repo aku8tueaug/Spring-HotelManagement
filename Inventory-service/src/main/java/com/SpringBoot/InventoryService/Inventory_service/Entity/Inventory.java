@@ -9,27 +9,22 @@ import java.time.LocalDate;
 @Entity
 
 @Table(
-
         name = "inventory",
-
         uniqueConstraints = {
-
                 @UniqueConstraint(
-
                         columnNames = {
-
                                 "hotel_id",
-
                                 "room_type",
-
                                 "inventory_date"
-
                         }
-
                 )
-
+        },
+        indexes = {
+                @Index(
+                        name = "idx_inventory_hotel_room_date",
+                        columnList = "hotel_id, room_type, inventory_date"
+                )
         }
-
 )
 @NoArgsConstructor
 @AllArgsConstructor
