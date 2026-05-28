@@ -55,7 +55,7 @@ public class Inventory {
 
     @Column(name = "total_rooms", nullable = false)
 
-    private Integer totalRooms;
+    private Integer totalRooms;  //ACTIVE physical rooms, not all room
 
     @Column(name = "reserved_rooms", nullable = false)
 
@@ -63,7 +63,7 @@ public class Inventory {
 
     @Column(name = "blocked_rooms", nullable = false)
 
-    private Integer blockedRooms;
+    private Integer blockedRooms; // INACTIVE,MAINTENANCE,RENOVATION,TEMPORARY_BLOCKED, and UNDER_CLEANING rooms
 
     @Version
 

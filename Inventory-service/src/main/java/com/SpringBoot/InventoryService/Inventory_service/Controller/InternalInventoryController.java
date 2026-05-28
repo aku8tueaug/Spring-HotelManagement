@@ -2,8 +2,8 @@ package com.SpringBoot.InventoryService.Inventory_service.Controller;
 
 
 import com.SpringBoot.InventoryService.Inventory_service.DTO.InventoryAdjustmentRequestDTO;
+import com.SpringBoot.InventoryService.Inventory_service.DTO.InventoryReservationRequestDTO;
 import com.SpringBoot.InventoryService.Inventory_service.Service.InventoryService;
-import com.SpringBoot.InventoryService.Inventory_service.Service.InventoryServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -19,39 +19,46 @@ public class InternalInventoryController {
     private final InventoryService inventoryService;
 
     @PatchMapping("/increase")
-    public ResponseEntity<Void> increaseIventory (@RequestBody InventoryAdjustmentRequestDTO request)
+    public ResponseEntity<Void> increaseInventory(@RequestBody InventoryAdjustmentRequestDTO request)
     {
         inventoryService.increaseInventory(request);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/decrease")
-    public ResponseEntity<?> removeIventory()
+    public ResponseEntity<Void> removeInventory(@RequestBody InventoryAdjustmentRequestDTO requestDTO)
     {
-        return new ResponseEntity<>(null); // dummy implementation
+        inventoryService.decreaseInventory(requestDTO);
+        return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/block")
 //    maintenance,cleaning,temporary unavailable
-    public ResponseEntity<?> blockIventory()
+    public ResponseEntity<?> blockInventory()
     {
-        return new ResponseEntity<>(null); // dummy implementation
+        return new ResponseEntity<>(null);
     }
+
+
 
     @PatchMapping("/reserve")
 //    Booking service will use this.
-    public ResponseEntity<?> reserveIventory()
+    public ResponseEntity<Void> reserveInventory(
+            @RequestBody InventoryReservationRequestDTO reservationRequestDTO)
     {
+        inventoryService.reserveInventory(reservationRequestDTO);
 //        reservedRooms += count
-        return new ResponseEntity<>(null); // dummy implementation
+        return ResponseEntity.ok().build();
     }
 
 
     @PatchMapping("/release")
 //    Booking service will use this.
-    public ResponseEntity<?> releaseIventory()
+    public ResponseEntity<?> releaseInventory(
+            @RequestBody InventoryReservationRequestDTO reservationRequestDTO )
     {
 //        reservedRooms -= count
-        return new ResponseEntity<>(null); // dummy implementation
+        inventoryService.releaseInventory(reservationRequestDTO);
+        return ResponseEntity.ok().build();
     }
 }

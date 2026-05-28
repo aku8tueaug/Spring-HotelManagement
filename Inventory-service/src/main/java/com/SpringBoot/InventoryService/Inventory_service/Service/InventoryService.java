@@ -1,7 +1,6 @@
 package com.SpringBoot.InventoryService.Inventory_service.Service;
 
-import com.SpringBoot.InventoryService.Inventory_service.DTO.InventoryAdjustmentRequestDTO;
-import com.SpringBoot.InventoryService.Inventory_service.DTO.InventoryDTO;
+import com.SpringBoot.InventoryService.Inventory_service.DTO.*;
 import com.SpringBoot.InventoryService.Inventory_service.Entity.RoomType;
 
 import java.time.LocalDate;
@@ -13,34 +12,24 @@ public interface InventoryService {
 
     void decreaseInventory(InventoryAdjustmentRequestDTO request);
 
-    void blockInventory(InventoryAdjustmentRequestDTO request);
+    void blockInventory(InventoryReservationRequestDTO request);
 
-    void unblockInventory(InventoryAdjustmentRequestDTO request);
+    void unblockInventory(InventoryReservationRequestDTO request);
 
-    void reserveInventory(
+    void reserveInventory(InventoryReservationRequestDTO request);
 
-            Long hotelId,
-            RoomType roomType,
-            LocalDate startDate,
-            LocalDate endDate,
-            Integer count
-    );
+    void releaseInventory(InventoryReservationRequestDTO request);
 
-    void releaseInventory(
-
-            Long hotelId,
-            RoomType roomType,
-            LocalDate startDate,
-            LocalDate endDate,
-            Integer count
-    );
-
-    List<InventoryDTO> getAvailability(
-
+    List<InventoryResponseDTO>
+    getInventoryByHotelAndRoomTypeAndDateRange(
             Long hotelId,
             RoomType roomType,
             LocalDate startDate,
             LocalDate endDate
+    );
+
+    boolean checkAvailability(
+            InventoryAvailabilityRequestDTO request
     );
 
 }
