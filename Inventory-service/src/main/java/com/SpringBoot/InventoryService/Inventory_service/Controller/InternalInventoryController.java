@@ -34,10 +34,24 @@ public class InternalInventoryController {
 
     @PatchMapping("/block")
 //    maintenance,cleaning,temporary unavailable
-    public ResponseEntity<?> blockInventory()
+    public ResponseEntity<Void> blockInventory(
+            @RequestBody InventoryReservationRequestDTO requestDTO
+    )
     {
-        return new ResponseEntity<>(null);
+       inventoryService.blockInventory(requestDTO);
+       return ResponseEntity.ok().build();
     }
+
+    @PatchMapping("/unblock")
+//    maintenance,cleaning,temporary unavailable
+    public ResponseEntity<Void> unblockInventory(
+            @RequestBody InventoryReservationRequestDTO requestDTO
+    )
+    {
+        inventoryService.unblockInventory(requestDTO);
+        return ResponseEntity.ok().build();
+    }
+
 
 
 

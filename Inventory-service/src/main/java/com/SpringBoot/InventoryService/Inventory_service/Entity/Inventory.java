@@ -63,7 +63,7 @@ public class Inventory {
 
     @Column(name = "blocked_rooms", nullable = false)
 
-    private Integer blockedRooms; // INACTIVE,MAINTENANCE,RENOVATION,TEMPORARY_BLOCKED, and UNDER_CLEANING rooms
+    private Integer blockedRooms; // MAINTENANCE,RENOVATION,TEMPORARY_BLOCKED, and UNDER_CLEANING rooms
 
     @Version
 

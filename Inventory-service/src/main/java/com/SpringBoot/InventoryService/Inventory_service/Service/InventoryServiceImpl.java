@@ -7,6 +7,7 @@ import com.SpringBoot.InventoryService.Inventory_service.Exception.ResourceNotFo
 import com.SpringBoot.InventoryService.Inventory_service.Repository.InventoryRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -85,6 +86,15 @@ public class InventoryServiceImpl implements InventoryService {
             if(updatedTotal < 0 )
                 throw new IllegalStateException("Inventory cannot become negative");
 
+
+
+            if (updatedTotal < inventory.getReservedRooms()
+                    + inventory.getBlockedRooms()) {
+                throw new IllegalStateException(
+                        "Cannot reduce inventory below reserved/blocked rooms"
+                );
+            }
+
             inventory.setTotalRooms(updatedTotal);
             inventories.add(inventory);
         }
@@ -93,22 +103,105 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public void blockInventory(InventoryReservationRequestDTO request) {
+        List<Inventory> inventories = fetchAndValidateAvailability(
+                request.hotelId(), request.roomType(),
+                request.startDate(), request.endDate() );
 
+        boolean unavailable =
+                inventories.stream()
+                        .anyMatch(inventory -> inventory.getAvailableRooms()
+                                < request.roomCount()
+                        );
+        if(unavailable)
+        {
+            throw new ResourceNotFoundException(
+                    "Insufficient inventory available"
+            );
+        }
+
+        for(Inventory inventory : inventories)
+        {
+            inventory.setBlockedRooms(
+                    inventory.getBlockedRooms() + request.roomCount()
+            );
+        }
+
+        inventoryRepository.saveAll(inventories);
     }
 
     @Override
     public void unblockInventory(InventoryReservationRequestDTO request) {
+        List<Inventory> inventories = fetchAndValidateAvailability(
+                request.hotelId(), request.roomType(),
+                request.startDate(), request.endDate() );
 
+        for(Inventory inventory : inventories)
+        {
+            int updatedBlocked =
+                    inventory.getBlockedRooms() - request.roomCount();
+
+            if(updatedBlocked < 0)
+            {
+                throw new IllegalStateException(
+                        "Reserved Inventory can not be negative"
+                );
+            }
+            inventory.setBlockedRooms(updatedBlocked);
+        }
+
+        inventoryRepository.saveAll(inventories);
     }
 
     @Override
     public void reserveInventory(InventoryReservationRequestDTO request) {
+        List<Inventory> inventories = fetchAndValidateAvailability(
+                request.hotelId(), request.roomType(),
+                request.startDate(), request.endDate() );
 
+        boolean unavailable =
+                inventories.stream()
+                        .anyMatch(inventory -> inventory.getAvailableRooms()
+                                < request.roomCount()
+                        );
+        if(unavailable)
+        {
+            throw new ResourceNotFoundException(
+                    "Insufficient inventory available"
+            );
+        }
+
+        for(Inventory inventory : inventories)
+        {
+            inventory.setReservedRooms(
+                    inventory.getReservedRooms() + request.roomCount()
+            );
+        }
+
+        inventoryRepository.saveAll(inventories);
     }
 
     @Override
     public void releaseInventory(InventoryReservationRequestDTO request) {
 
+        List<Inventory> inventories = fetchAndValidateAvailability(
+                request.hotelId(), request.roomType(),
+                request.startDate(), request.endDate() );
+
+        for(Inventory inventory : inventories)
+        {
+            int updatedReserved =
+                    inventory.getReservedRooms() - request.roomCount();
+
+            if(updatedReserved < 0)
+            {
+                throw new IllegalStateException(
+                        "Reserved Inventory can not be negative"
+                );
+            }
+            inventory.setReservedRooms(updatedReserved);
+        }
+
+        inventoryRepository.saveAll(inventories);
     }
 
     @Override
@@ -130,18 +223,43 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public boolean checkAvailability(InventoryAvailabilityRequestDTO request) {
-        List<Inventory> inventories = inventoryRepository.findByHotelIdAndRoomTypeAndInventoryDateBetween
-                            (request.hotelId(), request.roomType(),request.startDate(),request.endDate());
+        List<Inventory> inventories = fetchAndValidateAvailability(
+                request.hotelId(), request.roomType(),
+                request.startDate(), request.endDate() );
 
-        if(inventories.isEmpty())
-            return  false;
 
-        long totalDays = request.startDate().datesUntil(request.endDate()).count();
-
-        return inventories.size() == totalDays;
+        return inventories.stream()
+                .allMatch(inventory -> inventory.getAvailableRooms()
+                        >= request.requiredRooms()
+                );
     }
 
+
+
+
+
     //=========================== Helper Methods =================================================
+
+    private List<Inventory> fetchAndValidateAvailability(
+                                            Long hotelId,
+                                            RoomType roomType,
+                                            LocalDate startDate,
+                                            LocalDate endDate)
+    {
+        List<Inventory> inventories = inventoryRepository.findByHotelIdAndRoomTypeAndInventoryDateBetween
+                (hotelId,roomType,startDate,endDate);
+
+        long totalDays =
+                startDate.datesUntil(endDate.plusDays(1)).count();
+
+        if (inventories.size() != totalDays) {
+            throw new ResourceNotFoundException(
+                    "Inventory missing for some dates between "
+                            + startDate + " and " + endDate
+            );
+        }
+        return inventories;
+    }
 
     private InventoryResponseDTO entityToResponseDTO(Inventory inventory)
     {

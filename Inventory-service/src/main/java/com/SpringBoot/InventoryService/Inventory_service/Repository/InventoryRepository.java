@@ -13,7 +13,6 @@ import java.util.Optional;
 public interface InventoryRepository extends JpaRepository<Inventory,Long> {
     Optional<Inventory> findByHotelIdAndRoomType(Long hotelId, RoomType roomType);
     List<Inventory> findByHotelId(Long hotelId);
-    List<Inventory> findByRoomType(RoomType roomType);
 
     Optional<Inventory> findByHotelIdAndRoomTypeAndInventoryDate( Long hotelId,
                                                                   RoomType roomType,
