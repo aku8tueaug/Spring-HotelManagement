@@ -3,11 +3,12 @@ package com.SpringBoot.InventoryService.Inventory_service.Service;
 import com.SpringBoot.InventoryService.Inventory_service.DTO.*;
 import com.SpringBoot.InventoryService.Inventory_service.Entity.Inventory;
 import com.SpringBoot.InventoryService.Inventory_service.Entity.RoomType;
+import com.SpringBoot.InventoryService.Inventory_service.Exception.InsufficientInventoryException;
 import com.SpringBoot.InventoryService.Inventory_service.Exception.ResourceNotFoundException;
 import com.SpringBoot.InventoryService.Inventory_service.Repository.InventoryRepository;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,14 +19,16 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryRepository inventoryRepository;
 
     @Override
     public void increaseInventory(InventoryAdjustmentRequestDTO request) {
+        log.info("ENTERED INCREASE");
         LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.plusDays( request.horizonDays() );
+        LocalDate endDate = startDate.plusDays( request.horizonDays() - 1);
 
         List<Inventory> inventories = new ArrayList<>();
 
@@ -61,9 +64,9 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public void decreaseInventory(InventoryAdjustmentRequestDTO request) {
-
+        log.info("ENTERED DECREASE");
         LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.plusDays( request.horizonDays() );
+        LocalDate endDate = startDate.plusDays( request.horizonDays() -1);
 
         List<Inventory> inventories = new ArrayList<>();
 
@@ -102,53 +105,83 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public void blockInventory(InventoryReservationRequestDTO request) {
-        List<Inventory> inventories = fetchAndValidateAvailability(
-                request.hotelId(), request.roomType(),
-                request.startDate(), request.endDate() );
+    public void blockInventory(InventoryAdjustmentRequestDTO request) {
+        log.info("ENTERED BLOCK");
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = startDate.plusDays( request.horizonDays() - 1);
 
-        boolean unavailable =
-                inventories.stream()
-                        .anyMatch(inventory -> inventory.getAvailableRooms()
-                                < request.roomCount()
-                        );
-        if(unavailable)
-        {
-            throw new ResourceNotFoundException(
-                    "Insufficient inventory available"
-            );
-        }
+        List<Inventory> inventories = new ArrayList<>();
 
-        for(Inventory inventory : inventories)
+        for ( LocalDate date = startDate;
+              !date.isAfter(endDate);
+              date = date.plusDays(1)
+        )
         {
+            Inventory inventory =
+                    inventoryRepository
+                            .findByHotelIdAndRoomTypeAndInventoryDate(
+                                    request.hotelId(),
+                                    request.roomType(),
+                                    date
+                            )
+                            .orElse(
+                                    Inventory.builder()
+                                            .hotelId(request.hotelId())
+                                            .roomType(request.roomType())
+                                            .inventoryDate(date)
+                                            .totalRooms(0)
+                                            .reservedRooms(0)
+                                            .blockedRooms(0)
+                                            .build()
+                            );
+
+            if (inventory.getAvailableRooms() < request.count()) {
+                throw new InsufficientInventoryException(
+                        "Insufficient inventory available"
+                );
+            }
+
             inventory.setBlockedRooms(
-                    inventory.getBlockedRooms() + request.roomCount()
+                    inventory.getBlockedRooms() + request.count()
             );
+            inventories.add(inventory);
         }
+
 
         inventoryRepository.saveAll(inventories);
     }
 
     @Override
-    public void unblockInventory(InventoryReservationRequestDTO request) {
-        List<Inventory> inventories = fetchAndValidateAvailability(
-                request.hotelId(), request.roomType(),
-                request.startDate(), request.endDate() );
+    public void unblockInventory(InventoryAdjustmentRequestDTO request) {
+        log.info("ENTERED UNBLOCK");
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = startDate.plusDays( request.horizonDays() -1);
 
-        for(Inventory inventory : inventories)
-        {
-            int updatedBlocked =
-                    inventory.getBlockedRooms() - request.roomCount();
+        List<Inventory> inventories = new ArrayList<>();
 
-            if(updatedBlocked < 0)
-            {
-                throw new IllegalStateException(
-                        "Reserved Inventory can not be negative"
-                );
-            }
+        for ( LocalDate date = startDate;
+              !date.isAfter(endDate);
+              date = date.plusDays(1)
+        ) {
+            Inventory inventory =
+                    inventoryRepository
+                            .findByHotelIdAndRoomTypeAndInventoryDate(
+                                    request.hotelId(),
+                                    request.roomType(),
+                                    date
+                            )
+                            .orElseThrow(() -> {
+                                return new ResourceNotFoundException("Inventory Not found");
+                            });
+
+            int updatedBlocked = inventory.getBlockedRooms() - request.count();
+
+            if (updatedBlocked < 0)
+                throw new IllegalStateException("Inventory cannot become negative");
+
             inventory.setBlockedRooms(updatedBlocked);
+            inventories.add(inventory);
         }
-
         inventoryRepository.saveAll(inventories);
     }
 
@@ -165,7 +198,7 @@ public class InventoryServiceImpl implements InventoryService {
                         );
         if(unavailable)
         {
-            throw new ResourceNotFoundException(
+            throw new InsufficientInventoryException(
                     "Insufficient inventory available"
             );
         }
@@ -195,7 +228,7 @@ public class InventoryServiceImpl implements InventoryService {
             if(updatedReserved < 0)
             {
                 throw new IllegalStateException(
-                        "Reserved Inventory can not be negative"
+                        "Reserved Inventory cannot be negative"
                 );
             }
             inventory.setReservedRooms(updatedReserved);
@@ -207,15 +240,16 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public List<InventoryResponseDTO> getInventoryByHotelAndRoomTypeAndDateRange
-                                                            (Long hotelId,
-                                                             RoomType roomType,
-                                                             LocalDate startDate,
-                                                             LocalDate endDate)
+                                                            (InventoryQueryRequestDTO requestDTO)
     {
 
         //get all the inventories between the date range
-       List<Inventory> inventories = inventoryRepository.findByHotelIdAndRoomTypeAndInventoryDateBetween
-                                                                (hotelId, roomType, startDate, endDate);
+       List<Inventory> inventories = inventoryRepository
+               .findByHotelIdAndRoomTypeAndInventoryDateBetween
+                    ( requestDTO.hotelId(),
+                      requestDTO.roomType(),
+                      requestDTO.startDate(),
+                      requestDTO.endDate());
 
        return entityToResponseDTO(inventories);
     }
@@ -223,10 +257,17 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public boolean checkAvailability(InventoryAvailabilityRequestDTO request) {
-        List<Inventory> inventories = fetchAndValidateAvailability(
+        List<Inventory> inventories = inventoryRepository.findByHotelIdAndRoomTypeAndInventoryDateBetween(
                 request.hotelId(), request.roomType(),
                 request.startDate(), request.endDate() );
 
+        long totalDays =
+                request.startDate().datesUntil(
+                        request.endDate().plusDays(1)).count();
+
+        if (inventories.size() != totalDays) {
+            return false;
+        }
 
         return inventories.stream()
                 .allMatch(inventory -> inventory.getAvailableRooms()
@@ -253,7 +294,7 @@ public class InventoryServiceImpl implements InventoryService {
                 startDate.datesUntil(endDate.plusDays(1)).count();
 
         if (inventories.size() != totalDays) {
-            throw new ResourceNotFoundException(
+            throw new InsufficientInventoryException(
                     "Inventory missing for some dates between "
                             + startDate + " and " + endDate
             );

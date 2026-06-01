@@ -7,11 +7,10 @@ import com.SpringBoot.InventoryService.Inventory_service.Validation.DateRangeVal
 import java.time.LocalDate;
 
 @DateRangeValid
-public record InventoryReservationRequestDTO(
+public record InventoryQueryRequestDTO(
         Long hotelId,
         RoomType roomType,
         LocalDate startDate,
-        LocalDate endDate,
-        Integer roomCount
+        LocalDate endDate
 ) implements DateRangeRequest {
 }

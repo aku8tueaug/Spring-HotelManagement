@@ -12,21 +12,16 @@ public interface InventoryService {
 
     void decreaseInventory(InventoryAdjustmentRequestDTO request);
 
-    void blockInventory(InventoryReservationRequestDTO request);
+    void blockInventory(InventoryAdjustmentRequestDTO request);
 
-    void unblockInventory(InventoryReservationRequestDTO request);
+    void unblockInventory(InventoryAdjustmentRequestDTO request);
 
     void reserveInventory(InventoryReservationRequestDTO request);
 
     void releaseInventory(InventoryReservationRequestDTO request);
 
     List<InventoryResponseDTO>
-    getInventoryByHotelAndRoomTypeAndDateRange(
-            Long hotelId,
-            RoomType roomType,
-            LocalDate startDate,
-            LocalDate endDate
-    );
+    getInventoryByHotelAndRoomTypeAndDateRange(InventoryQueryRequestDTO requestDTO );
 
     boolean checkAvailability(
             InventoryAvailabilityRequestDTO request

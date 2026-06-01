@@ -1,5 +1,10 @@
 package com.SpringBoot.InventoryService.Inventory_service;
 
+import com.SpringBoot.InventoryService.Inventory_service.Exception.ApiError;
+import com.SpringBoot.InventoryService.Inventory_service.Exception.InsufficientInventoryException;
+import com.SpringBoot.InventoryService.Inventory_service.Exception.ResourceNotFoundException;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.ErrorResponse;
@@ -8,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -15,44 +21,102 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class ControllerExceptionHandler {
 
-    @ExceptionHandler(NoSuchElementException.class)
-    public ErrorResponse notFound(NoSuchElementException ex)
-    {
-        return ErrorResponse.create(ex, HttpStatus.NOT_FOUND,ex.getMessage());
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ErrorResponse handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiError> handleValidationException(
+            MethodArgumentNotValidException ex) {
+
         List<String> errors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .map(err -> err.getField() + ": " + err.getDefaultMessage())
-                .collect(Collectors.toList());
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .toList();
 
-        return ErrorResponse.builder(ex, HttpStatus.BAD_REQUEST, "Validation failed")
-                .detail(String.join("; ", errors))
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Validation Failed")
+                .message("Invalid input")
+                .details(errors)
                 .build();
-    }
-    @ExceptionHandler(WebClientResponseException.NotFound.class)
-    public ResponseEntity<String> handleNotFound(WebClientResponseException.NotFound ex) {
-        String uri = ex.getRequest() != null ? ex.getRequest().getURI().toString() : "unknown";
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body("Resource not found in external service: " + uri);
+
+        return new ResponseEntity<>(apiError, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(WebClientResponseException.class)
-    public ResponseEntity<String> handleWebClient(WebClientResponseException ex) {
-        return ResponseEntity.status(ex.getStatusCode())
-                .body("Downstream service error: " + ex.getMessage());
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex) {
+
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Resource Not Found")
+                .message(ex.getMessage())
+                .details(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.NOT_FOUND);
     }
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ErrorResponse handleIllegalArgument(IllegalArgumentException ex) {
-        return ErrorResponse.create(ex, HttpStatus.BAD_REQUEST, ex.getMessage());
+
+    @ExceptionHandler(InsufficientInventoryException.class)
+    public ResponseEntity<ApiError> handleInsuffientInventory(InsufficientInventoryException ex) {
+
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("Sufficient Inventory is not available")
+                .message(ex.getMessage())
+                .details(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
     }
+
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleGeneral(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Unexpected error: " + ex.getMessage());
+    public ResponseEntity<ApiError> handleGenericException(Exception ex) {
+
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error("Internal Server Error")
+                .message(ex.getMessage())
+                .details(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleConstraintViolation(
+            ConstraintViolationException ex) {
+
+        List<String> errors = ex.getConstraintViolations()
+                .stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .toList();
+
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Validation Failed")
+                .message("Invalid parameters")
+                .details(errors)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiError> handleOptimisticLockingFailureException(Exception ex)
+    {
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("Inventory Concurrently Modified. Please Retry!!!")
+                .message(ex.getMessage())
+                .details(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
     }
 
 

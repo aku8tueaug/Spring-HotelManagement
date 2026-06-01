@@ -18,10 +18,29 @@ public class HotelClientConfiguration {
 
     private final JwtTokenProvider jwtTokenProvider;
 
+//    @Bean
+//    public WebClient webClient(@Value("${spring.hotelService.url}") String baseUrl)
+//    {
+//        return WebClient.builder()
+//                .baseUrl(baseUrl)
+//                .filter((request, next) -> {
+//                    String authHeader = jwtTokenProvider.getAuthorizationHeader();
+//
+//                    ClientRequest filteredRequest =  ClientRequest.from(request)
+//                            .headers(headers ->{
+//                                if(authHeader !=null)
+//                                    headers.set("Authorization", authHeader);
+//                            }).build();
+//                    return next.exchange(filteredRequest);
+//                }).build();
+//    }
+
     @Bean
-    public WebClient webClient(@Value("${spring.hotelService.url}") String baseUrl)
-    {
-        return WebClient.builder()
+    public HotelClient hotelClient(
+            WebClient.Builder builder,
+            @Value("${spring.hotelService.url}") String baseUrl) {
+
+        WebClient webClient = builder.clone()
                 .baseUrl(baseUrl)
                 .filter((request, next) -> {
                     String authHeader = jwtTokenProvider.getAuthorizationHeader();
@@ -32,20 +51,14 @@ public class HotelClientConfiguration {
                                     headers.set("Authorization", authHeader);
                             }).build();
                     return next.exchange(filteredRequest);
-                }).build();
-    }
+                })
+                .build();
 
-    @Bean
-    public HotelClient hotelClient(WebClient webClient) {
         WebClientAdapter adapter = WebClientAdapter.create(webClient);
-        HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(adapter).build();
+        HttpServiceProxyFactory factory =
+                HttpServiceProxyFactory.builderFor(adapter).build();
+
         return factory.createClient(HotelClient.class);
     }
 
-    @Bean
-    public InventoryClient inventoryClient(WebClient webClient) {
-        WebClientAdapter adapter = WebClientAdapter.create(webClient);
-        HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(adapter).build();
-        return factory.createClient(InventoryClient.class);
-    }
 }

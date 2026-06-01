@@ -4,6 +4,7 @@ package com.SpringBoot.InventoryService.Inventory_service.Controller;
 import com.SpringBoot.InventoryService.Inventory_service.DTO.InventoryAdjustmentRequestDTO;
 import com.SpringBoot.InventoryService.Inventory_service.DTO.InventoryReservationRequestDTO;
 import com.SpringBoot.InventoryService.Inventory_service.Service.InventoryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -34,8 +35,8 @@ public class InternalInventoryController {
 
     @PatchMapping("/block")
 //    maintenance,cleaning,temporary unavailable
-    public ResponseEntity<Void> blockInventory(
-            @RequestBody InventoryReservationRequestDTO requestDTO
+    public ResponseEntity<Void> blockInventory( @Valid
+            @RequestBody InventoryAdjustmentRequestDTO requestDTO
     )
     {
        inventoryService.blockInventory(requestDTO);
@@ -44,8 +45,8 @@ public class InternalInventoryController {
 
     @PatchMapping("/unblock")
 //    maintenance,cleaning,temporary unavailable
-    public ResponseEntity<Void> unblockInventory(
-            @RequestBody InventoryReservationRequestDTO requestDTO
+    public ResponseEntity<Void> unblockInventory( @Valid
+            @RequestBody InventoryAdjustmentRequestDTO requestDTO
     )
     {
         inventoryService.unblockInventory(requestDTO);
@@ -57,7 +58,7 @@ public class InternalInventoryController {
 
     @PatchMapping("/reserve")
 //    Booking service will use this.
-    public ResponseEntity<Void> reserveInventory(
+    public ResponseEntity<Void> reserveInventory( @Valid
             @RequestBody InventoryReservationRequestDTO reservationRequestDTO)
     {
         inventoryService.reserveInventory(reservationRequestDTO);
@@ -68,7 +69,7 @@ public class InternalInventoryController {
 
     @PatchMapping("/release")
 //    Booking service will use this.
-    public ResponseEntity<?> releaseInventory(
+    public ResponseEntity<?> releaseInventory( @Valid
             @RequestBody InventoryReservationRequestDTO reservationRequestDTO )
     {
 //        reservedRooms -= count

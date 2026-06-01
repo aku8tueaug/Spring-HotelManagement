@@ -19,9 +19,8 @@ public class InventoryClientConfiguration {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Bean
-    public WebClient webClient(@Value("${spring.inventoryService.url}") String baseUrl)
-    {
-        return WebClient.builder()
+    public InventoryClient inventoryClient(WebClient.Builder builder, @Value("${spring.inventoryService.url}") String baseUrl) {
+        WebClient webClient = builder.clone()
                 .baseUrl(baseUrl)
                 .filter((request, next) -> {
                     String authHeader = jwtTokenProvider.getAuthorizationHeader();
@@ -32,13 +31,8 @@ public class InventoryClientConfiguration {
                                     headers.set("Authorization", authHeader);
                             }).build();
                     return next.exchange(filteredRequest);
-                }).build();
-    }
-
-
-
-    @Bean
-    public InventoryClient inventoryClient(WebClient webClient) {
+                })
+                .build();
         WebClientAdapter adapter = WebClientAdapter.create(webClient);
         HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(adapter).build();
         return factory.createClient(InventoryClient.class);
