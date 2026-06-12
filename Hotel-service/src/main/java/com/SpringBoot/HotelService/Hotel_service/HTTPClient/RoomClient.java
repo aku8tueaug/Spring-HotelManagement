@@ -8,4 +8,7 @@ import org.springframework.web.service.annotation.PatchExchange;
 public interface RoomClient {
     @PatchExchange("/internal/rooms/hotels/{hotelId}/deactivate")
     void deactivateRoomsByHotelId(@PathVariable Long hotelId);
+
+    @PatchExchange("/internal/rooms/hotels/{hotelId}/reactivate")
+    void reactivateRoomsByHotelId(@PathVariable Long hotelId);
 }

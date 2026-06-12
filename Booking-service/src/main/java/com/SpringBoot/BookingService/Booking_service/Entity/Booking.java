@@ -2,6 +2,7 @@ package com.SpringBoot.BookingService.Booking_service.Entity;
 
 import com.SpringBoot.BookingService.Booking_service.Entity.BookingStatus;
 import com.SpringBoot.BookingService.Booking_service.Entity.RoomType;
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,6 +13,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -27,31 +29,43 @@ public class Booking {
     @NotNull(message = "Hotel ID is required")
     private Long hotelId;
 
-    @NotNull(message = "Room ID is required")
-    private String roomNumber;
 
     @NotNull(message = "Room type is required")
     @Enumerated(EnumType.STRING)
     private RoomType roomType;
 
-    @ManyToMany
-    @JoinTable(name = "PersonBooking",
-            joinColumns = @JoinColumn(name = "bookingId"),
-            inverseJoinColumns = @JoinColumn(name = "personId"))
-    private List<Person> guests;
+    private Long userId;
 
-    @NotBlank(message = "Guest name is required")
-    private String guestName;
+    private Integer roomCount;
+
+    @ElementCollection
+    @NotNull
+    private List<Guest> guests;
 
     @NotNull(message = "Check-in date is required")
-    private LocalDate checkInDate;
+    private LocalDateTime plannedCheckInDateTime;
 
     @NotNull(message = "Check-out date is required")
-    private LocalDate checkOutDate;
+    private LocalDateTime plannedCheckOutDateTime;
+
+    @ElementCollection
+    private List<String> roomNumber;
+
+    private LocalDateTime actualCheckInDateTime;
+
+    private LocalDateTime actualCheckOutDateTime;
 
     @NotNull
     @Enumerated(EnumType.STRING)
     private BookingStatus status;
 
-    private BigDecimal price;
+    @Builder.Default
+    private LocalDate bookingDate = LocalDate.now();
+
+    @Version
+    private Long version;
+
+    public Integer getGuestCount() {
+        return guests == null ? 0 : guests.size();
+    }
 }

@@ -1,10 +1,11 @@
 package com.SpringBoot.BookingService.Booking_service.DTO;
 
+import com.SpringBoot.BookingService.Booking_service.Entity.RoomType;
+
 public record RoomDTO(
-        Long roomId,
         Long hotelId,
-        String roomNumber,
-        String roomType,
-        boolean available
+        RoomType roomType,
+        String roomNumber
+
 ) {
 }

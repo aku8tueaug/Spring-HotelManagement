@@ -2,8 +2,12 @@ package com.SpringBoot.BookingService.Booking_service.DTO;
 
 import com.SpringBoot.BookingService.Booking_service.Entity.RoomType;
 
-public record AvailabilityResponseDTO(
+import java.time.LocalDate;
+
+public record InventoryReservationRequestDTO(
         Long hotelId,
         RoomType roomType,
-        int availableCount
+        LocalDate startDate,
+        LocalDate endDate,
+        Integer roomCount
 ) {}

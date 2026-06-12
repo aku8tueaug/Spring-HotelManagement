@@ -9,10 +9,6 @@ import java.util.List;
 
 @HttpExchange
 public interface RoomClient {
-
-    @GetExchange("/rooms/{roomNumber}")
-    public RoomDTO getRoomByRoomNumber(@PathVariable("roomNumber") String roomNumber);
-
-    @GetExchange("/rooms/type/{roomType}")
-    public List<RoomDTO> getRoomByType(@PathVariable("roomType") String roomType);
+    @GetExchange("/rooms/hotel/{hotelId}/type/{roomType}")
+    List<RoomDTO> getRoomsByHotelAndType(@PathVariable Long hotelId, @PathVariable String roomType );
 }

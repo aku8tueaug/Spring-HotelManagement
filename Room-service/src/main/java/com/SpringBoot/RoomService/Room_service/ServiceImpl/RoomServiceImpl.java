@@ -80,7 +80,6 @@ public class RoomServiceImpl implements RoomService {
                     .build();
             rooms.add(room);
         }
-        List<Room> savedRooms = roomRepository.saveAll(rooms);
 
         //Increase Inventory
         if(multipleRoomRequestDTO.roomStatus() == RoomStatus.ACTIVE) {
@@ -96,7 +95,7 @@ public class RoomServiceImpl implements RoomService {
                     entityToInventoryAdjustmentRequestDTO(multipleRoomRequestDTO)
             );
         }
-
+        List<Room> savedRooms = roomRepository.saveAll(rooms);
         return entityToResponseRoomDTO(savedRooms);
 
     }
@@ -161,6 +160,24 @@ public class RoomServiceImpl implements RoomService {
         }
 
         //if there is an reservation.
+        roomRepository.saveAll(rooms);
+    }
+
+    @Override
+    public void reactivateRoomsByHotelId(Long hotelId) {
+        List<Room> rooms = roomRepository.findByHotelId(hotelId);
+        for (Room room : rooms) {
+            if(room.getStatus() == RoomStatus.ACTIVE)
+                continue;
+
+            if(room.getStatus() == RoomStatus.INACTIVE)
+            {
+                inventoryClient.increaseInventory(
+                        entityToInventoryAdjustmentRequestDTO(room)
+                );
+            }
+            room.setStatus(RoomStatus.ACTIVE);
+        }
         roomRepository.saveAll(rooms);
     }
 
@@ -258,6 +275,25 @@ public class RoomServiceImpl implements RoomService {
         Room updatedRoom = roomRepository.save(room);
 
         return entityToResponseRoomDTO(updatedRoom);
+    }
+
+    @Override
+    public List<RoomSummaryDTO> getRoomByHotelIdAndRoomType(Long hotelId, RoomType roomType) {
+        hotelClient.validateHotelExists(hotelId);
+
+        List<Room> rooms =  roomRepository.findByHotelIdAndRoomTypeAndStatus(hotelId,roomType, RoomStatus.ACTIVE);
+        List<RoomSummaryDTO> responseDTOList = new ArrayList<>();
+        for(Room room : rooms)
+        {
+            responseDTOList.add(
+                    new RoomSummaryDTO(
+                            room.getHotelId(),
+                            room.getRoomType(),
+                            room.getRoomNumber()
+                    )
+            );
+        }
+        return responseDTOList;
     }
 
 

@@ -78,4 +78,12 @@ public class HotelController {
         HotelResponseDTO responseDTO = hotelService.deleteHotelById(id);
         return ResponseEntity.ok(responseDTO);
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/{id}")
+    public ResponseEntity<HotelResponseDTO> reactivateHotelById(@PathVariable Long id)
+    {
+        HotelResponseDTO responseDTO = hotelService.reactivateHotelById(id);
+        return ResponseEntity.ok(responseDTO);
+    }
 }

@@ -21,4 +21,11 @@ public class InternalRoomController {
         roomService.deactivateRoomsByHotelId(hotelId);
         return ResponseEntity.ok().build();
     }
+
+    @PatchMapping("/hotels/{hotelId}/reactivate")
+    public ResponseEntity<Void> reactivateRooms(
+            @PathVariable Long hotelId) {
+        roomService.reactivateRoomsByHotelId(hotelId);
+        return ResponseEntity.ok().build();
+    }
 }

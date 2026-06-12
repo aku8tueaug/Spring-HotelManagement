@@ -1,13 +1,13 @@
 package com.SpringBoot.BookingService.Booking_service.DTO;
 
-
 import com.SpringBoot.BookingService.Booking_service.Entity.RoomType;
 
-public record InventoryDTO(
-        Long inventoryId,
+import java.time.LocalDate;
+
+public record InventoryAvailabilityRequestDTO(
         Long hotelId,
         RoomType roomType,
-        Long roomId,
-        Integer totalRooms,
-        Integer availableRooms
+        LocalDate startDate,
+        LocalDate endDate,
+        Integer requiredRooms
 ) {}

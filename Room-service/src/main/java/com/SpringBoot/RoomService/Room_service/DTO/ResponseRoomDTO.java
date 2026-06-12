@@ -9,6 +9,4 @@ public record ResponseRoomDTO(
         String roomNumber,
         RoomType roomType,
         RoomStatus roomStatus) {
-
-
 }

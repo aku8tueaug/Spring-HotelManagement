@@ -1,10 +1,6 @@
 package com.SpringBoot.RoomService.Room_service.Controller;
 
-import com.SpringBoot.RoomService.Room_service.DTO.CreateMultipleRoomRequestDTO;
-import com.SpringBoot.RoomService.Room_service.DTO.CreateRoomRequestDTO;
-import com.SpringBoot.RoomService.Room_service.DTO.ResponseRoomDTO;
-import com.SpringBoot.RoomService.Room_service.DTO.UpdateRoomRequestDTO;
-import com.SpringBoot.RoomService.Room_service.Entity.Room;
+import com.SpringBoot.RoomService.Room_service.DTO.*;
 import com.SpringBoot.RoomService.Room_service.Entity.RoomType;
 import com.SpringBoot.RoomService.Room_service.Service.RoomService;
 import jakarta.validation.Valid;
@@ -92,6 +88,14 @@ public class RoomController {
                 roomService.updateRoom(roomId, request);
 
         return ResponseEntity.ok(response);
+    }
+
+
+    @GetMapping("/hotel/{hotelId}/type/{roomType}")
+    public ResponseEntity<List<RoomSummaryDTO>> getRoomsByHotelAndType(@PathVariable Long hotelId,
+                                                                       @PathVariable RoomType roomType)
+    {
+        return ResponseEntity.ok(roomService.getRoomByHotelIdAndRoomType(hotelId,roomType));
     }
 
 

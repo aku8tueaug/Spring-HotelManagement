@@ -16,4 +16,6 @@ public interface HotelService {
 
     HotelResponseDTO deleteHotelById(Long id);
 
+    HotelResponseDTO reactivateHotelById(Long id);
+
 }

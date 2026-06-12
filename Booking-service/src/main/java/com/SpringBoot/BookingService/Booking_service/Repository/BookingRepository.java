@@ -12,37 +12,21 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking,Long> {
-    @Query("""
-      SELECT b FROM Booking b
-       WHERE b.hotelId = :hotelId
-         AND b.roomType = :roomType
-         AND b.roomNumber = :roomNumber
-         AND b.status = 'CONFIRMED'
-         AND b.checkInDate < :to
-         AND b.checkOutDate > :from
-    """)
-    List<Booking> findConflicts(
-            @Param("hotelId") Long hotelId,
-            @Param("roomType") RoomType roomType,
-            @Param("roomNumber") String roomNumber,
-            @Param("from") LocalDate from,
-            @Param("to") LocalDate to);
 
     List<Booking> findByStatus(BookingStatus status);
-    Optional<Booking> findByRoomNumber(String roomNumber);
+    List<Booking> findByUserId(Long userId);
+    List<Booking> findByHotelId(Long hotelId);
 
-
-    @Query("SELECT b FROM Booking b " +
-            "WHERE b.hotelId = :hotelId " +
-            "AND b.roomType = :roomType " +
-            "AND b.status = 'CONFIRMED' " +
-            "AND b.checkInDate < :checkOutDate " +
-            "AND b.checkOutDate > :checkInDate")
-    List<Booking> findBookingsInDateRange(
+    @Query("""
+        SELECT rn
+        FROM Booking b
+        JOIN b.roomNumber rn
+        WHERE b.hotelId = :hotelId
+        AND b.roomType = :roomType
+        AND b.status = 'CHECKED_IN'
+        """)
+    List<String> findOccupiedRooms(
             @Param("hotelId") Long hotelId,
-            @Param("roomType") RoomType roomType,
-            @Param("checkInDate") LocalDate checkInDate,
-            @Param("checkOutDate") LocalDate checkOutDate
+            @Param("roomType") RoomType roomType
     );
-
 }

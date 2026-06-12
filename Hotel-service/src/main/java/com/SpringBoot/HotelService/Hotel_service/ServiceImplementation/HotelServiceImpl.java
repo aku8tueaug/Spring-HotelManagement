@@ -171,4 +171,37 @@ public class HotelServiceImpl implements HotelService {
 
         return HotelMapper.toResponseDTO(hotel);
     }
+
+    @Override
+    public HotelResponseDTO reactivateHotelById(Long id) {
+        Hotel hotel = hotelRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Hotel not found with id: {}", id);
+                    return new ResourceNotFoundException("Hotel not found with id: " + id);
+                });
+
+        try {
+            roomClient.reactivateRoomsByHotelId(id);
+        } catch (Exception ex) {
+            log.error(
+                    "Room reactivation failed for hotelId={}",
+                    id,
+                    ex);
+            throw ex;
+        }
+
+        try {
+            hotel.setActive(true);
+            hotelRepository.save(hotel);
+        } catch (Exception ex) {
+            log.error(
+                    "Hotel reactivation failed after room cleanup. hotelId={}",
+                    id,
+                    ex);
+            throw ex;
+        }
+
+        return HotelMapper.toResponseDTO(hotel);
+    }
+
 }

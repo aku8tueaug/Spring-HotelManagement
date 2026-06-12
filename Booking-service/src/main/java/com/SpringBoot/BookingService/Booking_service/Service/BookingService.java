@@ -9,13 +9,14 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 
-@Service
+
 public interface BookingService {
     BookingResponseDTO createBooking(BookingRequestDTO request);
     BookingResponseDTO cancelBooking(Long bookingId);
-    BookingResponseDTO getBookingById(Long bookingId);
-    List<BookingResponseDTO> getBookingsByStatus(String bookingStatus);
-//    BookingResponseDTO getBookingWithRoomId(Long roomId);
-    BookingResponseDTO getBookingByRoomNumber(String roomNumber);
-    BookingResponseDTO addAdditionalCharges(Long bookingId, BigDecimal extraCharges);
+    BookingResponseDTO getBooking(Long bookingId);
+    List<BookingResponseDTO> getBookingsByStatus(BookingStatus status);
+    List<BookingResponseDTO> getBookingsByUserId(Long userId);
+    List<BookingResponseDTO> getBookingsByHotelId(Long hotelId);
+    BookingResponseDTO checkIn(Long bookingId);
+    BookingResponseDTO checkOut(Long bookingId);
 }
