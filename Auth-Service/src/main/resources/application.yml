@@ -19,7 +19,7 @@ spring:
 server:
   port: 4040
 
-jwt:
-  secret: mysecretkeymysecretkeymysecretkey123
-  access-token-expiry: 900000   # 15 min
-  refresh-token-expiry: 604800000  # 7 days
+#jwt:
+#  secret: mysecretkeymysecretkeymysecretkey123
+#  access-token-expiry: 900000   # 15 min
+#  refresh-token-expiry: 604800000  # 7 days

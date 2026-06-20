@@ -13,4 +13,9 @@ public interface HotelService {
     HotelResponseDTO getHotelById(Long id);
 
     Page<HotelResponseDTO> getAllHotels(int page, int size, String sortBy, String direction);
+
+    HotelResponseDTO deleteHotelById(Long id);
+
+    HotelResponseDTO reactivateHotelById(Long id);
+
 }

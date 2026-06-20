@@ -2,181 +2,223 @@ package com.SpringBoot.BillingService.Billing_service.PricingService.ServicesImp
 
 import com.SpringBoot.BillingService.Billing_service.Clients.BookingClient;
 import com.SpringBoot.BillingService.Billing_service.PaymentService.DTO.BookingResponseDTO;
-import com.SpringBoot.BillingService.Billing_service.PricingService.DTO.PriceRequestDTO;
-import com.SpringBoot.BillingService.Billing_service.PricingService.DTO.PriceResponseDTO;
-import com.SpringBoot.BillingService.Billing_service.PricingService.DTO.RoomPricingRequestDTO;
-import com.SpringBoot.BillingService.Billing_service.PricingService.DTO.RoomPricingResponseDTO;
-import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.RoomPricing;
-import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.RoomType;
-import com.SpringBoot.BillingService.Billing_service.PricingService.Repository.RoomPricingRepository;
+import com.SpringBoot.BillingService.Billing_service.PricingService.DTO.*;
+import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.RatePlan;
+import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.SeasonalPricing;
+import com.SpringBoot.BillingService.Billing_service.PricingService.Repository.RatePlanRepository;
+import com.SpringBoot.BillingService.Billing_service.PricingService.Repository.SeasonalPricingRepository;
 import com.SpringBoot.BillingService.Billing_service.PricingService.Services.PricingService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.Month;
 import java.time.temporal.ChronoUnit;
-import java.util.Optional;
+import java.util.List;
 
 @Service
+@RequiredArgsConstructor
+@Transactional
 public class PricingServiceImplementation implements PricingService {
 
-    public final RoomPricingRepository  roomPricingRepository;
-    public final BookingClient bookingClient;
+    private final RatePlanRepository ratePlanRepository;
+    private final SeasonalPricingRepository seasonalPricingRepository;
+    private final BookingClient bookingClient;
 
+    @Override
+    @Transactional(readOnly = true)
+    public PriceResponseDTO calculateDynamicPrice(PriceRequestDTO request) {
+        if (!request.checkOutDate().isAfter(request.checkInDate())) {
+            throw new IllegalArgumentException("Checkout date must be after check-in date");
+        }
 
-    public PricingServiceImplementation( RoomPricingRepository roomPricingRepository, BookingClient bookingClient)
-    {
-        this.roomPricingRepository = roomPricingRepository;
-        this.bookingClient = bookingClient;
+        BigDecimal subtotal = BigDecimal.ZERO;
+        long nights = ChronoUnit.DAYS.between(request.checkInDate(), request.checkOutDate());
+
+        for (int i = 0; i < nights; i++) {
+            LocalDate date = request.checkInDate().plusDays(i);
+
+            // Fetch active RatePlan for this night
+            RatePlan ratePlan = ratePlanRepository
+                    .findByHotelIdAndRoomTypeAndActiveTrueAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                            request.hotelId(), request.roomType(), date, date)
+                    .orElseThrow(() -> new IllegalArgumentException("No active RatePlan configured for date: " + date));
+
+            BigDecimal nightPrice = ratePlan.getBasePrice();
+
+            // Fetch active SeasonalPricing adjustments for this night
+            List<SeasonalPricing> seasonalPricings = seasonalPricingRepository
+                    .findByHotelIdAndRoomTypeAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                            request.hotelId(), request.roomType(), date, date);
+
+            for (SeasonalPricing adjustment : seasonalPricings) {
+                String type = adjustment.getAdjustmentType().toUpperCase();
+                BigDecimal val = adjustment.getAdjustmentValue();
+                if ("MULTIPLIER".equals(type) || "PERCENTAGE".equals(type)) {
+                    nightPrice = nightPrice.multiply(val);
+                } else if ("FLAT_ADD".equals(type)) {
+                    nightPrice = nightPrice.add(val);
+                } else if ("FLAT_SUBTRACT".equals(type)) {
+                    nightPrice = nightPrice.subtract(val);
+                }
+            }
+
+            subtotal = subtotal.add(nightPrice);
+        }
+
+        // Add extra guest charges if guest count > 2 (add $500 per extra guest per night)
+        if (request.guestCount() > 2) {
+            int extraGuests = request.guestCount() - 2;
+            BigDecimal extraCharges = BigDecimal.valueOf(extraGuests)
+                    .multiply(BigDecimal.valueOf(500))
+                    .multiply(BigDecimal.valueOf(nights));
+            subtotal = subtotal.add(extraCharges);
+        }
+
+        // Tax Engine Logic
+        BigDecimal taxRate = subtotal.compareTo(BigDecimal.valueOf(1000)) >= 0 
+                ? BigDecimal.valueOf(0.18) 
+                : BigDecimal.valueOf(0.12);
+        BigDecimal taxAmount = subtotal.multiply(taxRate);
+        BigDecimal finalAmount = subtotal.add(taxAmount);
+
+        return new PriceResponseDTO(subtotal, taxAmount, finalAmount);
     }
 
     @Override
-    public PriceResponseDTO calculateDynamicPrice(PriceRequestDTO priceRequest) {
-        RoomPricing pricing = roomPricingRepository.findByHotelIdAndRoomType(
-                        priceRequest.hotelId(), priceRequest.roomType())
-                .orElseThrow(() -> new IllegalArgumentException("Pricing not configured."));
-
-        BigDecimal price = pricing.getBasePrice();
-
-        if (priceRequest.isWeekend()) {
-            price =price.add( price.multiply(pricing.getWeekendMultiplier()));
-        }
-
-        if (priceRequest.isSeasonal()) {
-            price = price.add( price.multiply(pricing.getSeasonalMultiplier()));
-        }
-
-        if (priceRequest.numberOfGuests() > 2) {
-            int extraGuest = priceRequest.numberOfGuests() -2;
-            BigDecimal extraGuestCharges = BigDecimal.valueOf(extraGuest).multiply(BigDecimal.valueOf(500));
-            price = price.add(extraGuestCharges); // extra guest fee
-        }
-
-        price = price.multiply(BigDecimal.valueOf(priceRequest.stayLengthInDays()));
-
-        return new PriceResponseDTO(priceRequest.hotelId(), priceRequest.roomType(), price);
-
-    }
-
-
-
-    @Override
+    @Transactional(readOnly = true)
     public BigDecimal getPriceForBookingById(Long id) {
-        BookingResponseDTO bookingResponseDTO = bookingClient.getById(id);
-        PriceRequestDTO priceRequestDTO = mapToPriceRequestDTO(bookingResponseDTO);
-        PriceResponseDTO priceResponseDTO = calculateDynamicPrice(priceRequestDTO);
-        return priceResponseDTO.finalPrice();
-    }
-
-
- // CRUD OPS for Room Pricing
-    @Override
-    public RoomPricingResponseDTO addPricing(RoomPricingRequestDTO roomPricingRequestDTO) {
-        RoomType roomType = RoomType.valueOf(roomPricingRequestDTO.roomType().toUpperCase());
-        Optional<RoomPricing> roomPricing = roomPricingRepository.findByHotelIdAndRoomType(
-                roomPricingRequestDTO.hotelId(), roomType);
-
-        if (roomPricing.isPresent()) {
-            throw new RuntimeException("The price for this roomType is already maintained. Please update instead.");
-        }
-
-        RoomPricing newPricing = mapToRoomPricing(roomPricingRequestDTO);
-        newPricing = roomPricingRepository.save(newPricing);
-        return mapToRoomPricingDTO(newPricing);
-    }
-
-    @Override
-    public RoomPricingResponseDTO updatePricing(RoomPricingRequestDTO roomPricingRequestDTO) {
-        RoomType roomType = RoomType.valueOf(roomPricingRequestDTO.roomType().toUpperCase());
-        Optional<RoomPricing> existing = roomPricingRepository.findByHotelIdAndRoomType(
-                roomPricingRequestDTO.hotelId(), roomType);
-
-        if (existing.isEmpty()) {
-            throw new RuntimeException("The price for this roomType is not maintained. Please add instead.");
-        }
-
-        RoomPricing updated = mapToRoomPricing(roomPricingRequestDTO);
-        updated.setId(existing.get().getId()); // preserve existing ID
-        updated = roomPricingRepository.save(updated);
-        return mapToRoomPricingDTO(updated);
-    }
-
-    @Override
-    public RoomPricingResponseDTO deletePricing(RoomPricingRequestDTO roomPricingRequestDTO) {
-        RoomType roomType = RoomType.valueOf(roomPricingRequestDTO.roomType().toUpperCase());
-        Optional<RoomPricing> existing = roomPricingRepository.findByHotelIdAndRoomType(
-                roomPricingRequestDTO.hotelId(), roomType);
-
-        if (existing.isEmpty()) {
-            throw new RuntimeException("No pricing found for the given hotel and room type.");
-        }
-
-        roomPricingRepository.delete(existing.get());
-        return mapToRoomPricingDTO(existing.get()); // return deleted pricing
-    }
-
-
-    //helper method
-    private RoomPricing mapToRoomPricing(RoomPricingRequestDTO roomPricingRequestDTO)
-    {
-        return RoomPricing.builder()
-                .hotelId(roomPricingRequestDTO.hotelId())
-                .roomType(RoomType.valueOf(roomPricingRequestDTO.roomType().toUpperCase()))
-                .basePrice(BigDecimal.valueOf(roomPricingRequestDTO.basePrice()))
-                .weekendMultiplier(BigDecimal.valueOf(roomPricingRequestDTO.weekendMultiplier()))
-                .seasonalMultiplier(BigDecimal.valueOf(roomPricingRequestDTO.seasonalMultiplier()))
-                .build();
-    }
-    private RoomPricingResponseDTO mapToRoomPricingDTO(RoomPricing roomPricing)
-    {
-        return new RoomPricingResponseDTO(
-                roomPricing.getId(),
-                roomPricing.getHotelId(),
-                roomPricing.getRoomType(),
-                roomPricing.getBasePrice(),
-                roomPricing.getWeekendMultiplier(),
-                roomPricing.getSeasonalMultiplier()
-        );
-    }
-    private PriceRequestDTO mapToPriceRequestDTO(BookingResponseDTO booking )
-    {
-        boolean isWeekendBooking = isWeekendBooking(booking.checkInDate(),booking.checkOutDate());
-        boolean isSeasonal = isSeasonalBooking(booking.checkInDate(),booking.checkOutDate());
-        Long noOfDays = ChronoUnit.DAYS.between(booking.checkInDate(),booking.checkOutDate());
-
-        return new PriceRequestDTO(
+        BookingResponseDTO booking = bookingClient.getById(id);
+        PriceRequestDTO request = new PriceRequestDTO(
                 booking.hotelId(),
                 booking.roomType(),
-                booking.guests().size(),
-                noOfDays.intValue(),
-                isWeekendBooking,
-                isSeasonal
+                booking.checkInDate(),
+                booking.checkOutDate(),
+                booking.guests() != null ? booking.guests().size() : 1
+        );
+        return calculateDynamicPrice(request).finalAmount();
+    }
+
+    @Override
+    public RatePlanResponseDTO addRatePlan(RatePlanRequestDTO request) {
+        validateRatePlanOverlap(null, request);
+        RatePlan ratePlan = RatePlan.builder()
+                .hotelId(request.hotelId())
+                .roomType(request.roomType())
+                .basePrice(request.basePrice())
+                .startDate(request.startDate())
+                .endDate(request.endDate())
+                .active(request.active())
+                .build();
+        ratePlan = ratePlanRepository.save(ratePlan);
+        return mapToRatePlanDTO(ratePlan);
+    }
+
+    @Override
+    public RatePlanResponseDTO updateRatePlan(Long ratePlanId, RatePlanRequestDTO request) {
+        RatePlan ratePlan = ratePlanRepository.findById(ratePlanId)
+                .orElseThrow(() -> new IllegalArgumentException("RatePlan not found"));
+        validateRatePlanOverlap(ratePlanId, request);
+        ratePlan.setHotelId(request.hotelId());
+        ratePlan.setRoomType(request.roomType());
+        ratePlan.setBasePrice(request.basePrice());
+        ratePlan.setStartDate(request.startDate());
+        ratePlan.setEndDate(request.endDate());
+        ratePlan.setActive(request.active());
+        ratePlan = ratePlanRepository.save(ratePlan);
+        return mapToRatePlanDTO(ratePlan);
+    }
+
+    @Override
+    public void deleteRatePlan(Long ratePlanId) {
+        RatePlan ratePlan = ratePlanRepository.findById(ratePlanId)
+                .orElseThrow(() -> new IllegalArgumentException("RatePlan not found"));
+        ratePlanRepository.delete(ratePlan);
+    }
+
+    @Override
+    public SeasonalPricingResponseDTO addSeasonalPricing(SeasonalPricingRequestDTO request) {
+        validateSeasonalPricingOverlap(null, request);
+        SeasonalPricing seasonalPricing = SeasonalPricing.builder()
+                .hotelId(request.hotelId())
+                .roomType(request.roomType())
+                .startDate(request.startDate())
+                .endDate(request.endDate())
+                .adjustmentType(request.adjustmentType())
+                .adjustmentValue(request.adjustmentValue())
+                .build();
+        seasonalPricing = seasonalPricingRepository.save(seasonalPricing);
+        return mapToSeasonalPricingDTO(seasonalPricing);
+    }
+
+    @Override
+    public SeasonalPricingResponseDTO updateSeasonalPricing(Long id, SeasonalPricingRequestDTO request) {
+        SeasonalPricing seasonalPricing = seasonalPricingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("SeasonalPricing not found"));
+        validateSeasonalPricingOverlap(id, request);
+        seasonalPricing.setHotelId(request.hotelId());
+        seasonalPricing.setRoomType(request.roomType());
+        seasonalPricing.setStartDate(request.startDate());
+        seasonalPricing.setEndDate(request.endDate());
+        seasonalPricing.setAdjustmentType(request.adjustmentType());
+        seasonalPricing.setAdjustmentValue(request.adjustmentValue());
+        seasonalPricing = seasonalPricingRepository.save(seasonalPricing);
+        return mapToSeasonalPricingDTO(seasonalPricing);
+    }
+
+    @Override
+    public void deleteSeasonalPricing(Long id) {
+        SeasonalPricing seasonalPricing = seasonalPricingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("SeasonalPricing not found"));
+        seasonalPricingRepository.delete(seasonalPricing);
+    }
+
+    private void validateRatePlanOverlap(Long ratePlanId, RatePlanRequestDTO request) {
+        List<RatePlan> existingPlans = ratePlanRepository.findByHotelIdAndRoomType(request.hotelId(), request.roomType());
+        for (RatePlan plan : existingPlans) {
+            if (plan.getActive() && (ratePlanId == null || !plan.getRatePlanId().equals(ratePlanId))) {
+                if (request.startDate().isBefore(plan.getEndDate().plusDays(1)) 
+                        && request.endDate().isAfter(plan.getStartDate().minusDays(1))) {
+                    throw new IllegalArgumentException("Overlap detected with existing active RatePlan ID: " + plan.getRatePlanId());
+                }
+            }
+        }
+    }
+
+    private void validateSeasonalPricingOverlap(Long id, SeasonalPricingRequestDTO request) {
+        List<SeasonalPricing> existingSeasonals = seasonalPricingRepository.findByHotelIdAndRoomType(request.hotelId(), request.roomType());
+        for (SeasonalPricing pricing : existingSeasonals) {
+            if (id == null || !pricing.getId().equals(id)) {
+                if (request.startDate().isBefore(pricing.getEndDate().plusDays(1)) 
+                        && request.endDate().isAfter(pricing.getStartDate().minusDays(1))) {
+                    throw new IllegalArgumentException("Overlap detected with existing SeasonalPricing ID: " + pricing.getId());
+                }
+            }
+        }
+    }
+
+    private RatePlanResponseDTO mapToRatePlanDTO(RatePlan ratePlan) {
+        return new RatePlanResponseDTO(
+                ratePlan.getRatePlanId(),
+                ratePlan.getHotelId(),
+                ratePlan.getRoomType(),
+                ratePlan.getBasePrice(),
+                ratePlan.getStartDate(),
+                ratePlan.getEndDate(),
+                ratePlan.getActive()
         );
     }
-    private boolean isWeekendBooking(LocalDate checkIn, LocalDate checkOut) {
-        return checkIn.getDayOfWeek().getValue() >= 6 ||
-                checkOut.getDayOfWeek().getValue() >= 6;
+
+    private SeasonalPricingResponseDTO mapToSeasonalPricingDTO(SeasonalPricing sp) {
+        return new SeasonalPricingResponseDTO(
+                sp.getId(),
+                sp.getHotelId(),
+                sp.getRoomType(),
+                sp.getStartDate(),
+                sp.getEndDate(),
+                sp.getAdjustmentType(),
+                sp.getAdjustmentValue()
+        );
     }
-
-    private boolean isSeasonalBooking(LocalDate checkIn, LocalDate checkOut) {
-        // Example: July-August considered seasonal
-        Month checkInMonth = checkIn.getMonth();
-        Month checkOutMonth = checkOut.getMonth();
-        return (checkInMonth == Month.JULY ||
-                checkInMonth == Month.AUGUST ||
-                checkInMonth == Month.NOVEMBER||
-                checkInMonth == Month.DECEMBER)
-                ||
-                (checkOutMonth == Month.JULY ||
-                        checkOutMonth == Month.AUGUST ||
-                        checkOutMonth == Month.NOVEMBER||
-                        checkOutMonth == Month.DECEMBER
-                );
-    }
-
-
-
-
-
 }

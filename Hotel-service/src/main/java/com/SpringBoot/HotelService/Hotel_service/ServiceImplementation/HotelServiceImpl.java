@@ -6,6 +6,7 @@ import com.SpringBoot.HotelService.Hotel_service.DTO.HotelUpdateRequestDTO;
 import com.SpringBoot.HotelService.Hotel_service.Entity.Address;
 import com.SpringBoot.HotelService.Hotel_service.Entity.Hotel;
 import com.SpringBoot.HotelService.Hotel_service.Exception.ResourceNotFoundException;
+import com.SpringBoot.HotelService.Hotel_service.HTTPClient.RoomClient;
 import com.SpringBoot.HotelService.Hotel_service.Mapper.HotelMapper;
 import com.SpringBoot.HotelService.Hotel_service.Repository.HotelRepository;
 import com.SpringBoot.HotelService.Hotel_service.Service.HotelService;
@@ -23,13 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 @Slf4j
 public class HotelServiceImpl implements HotelService {
 
     private final HotelRepository hotelRepository;
+    private final RoomClient roomClient;
 
     @Override
+    @Transactional
     public HotelResponseDTO createHotel(HotelCreateRequestDTO request) {
         log.info("Creating hotel with name: {}", request.name());
         Hotel hotel = HotelMapper.toEntity(request);
@@ -40,9 +42,10 @@ public class HotelServiceImpl implements HotelService {
     }
 
     @Override
+    @Transactional
     public HotelResponseDTO updateHotel(Long id, HotelUpdateRequestDTO dto) {
         log.info("Updating hotel with id: {}", id);
-        Hotel hotel = hotelRepository.findById(id)
+        Hotel hotel = hotelRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> {  log.error("Hotel not found with id: {}", id);
                     return new ResourceNotFoundException("Hotel not found with id: " + id);
                 });
@@ -113,7 +116,7 @@ public class HotelServiceImpl implements HotelService {
 
         log.info("Fetching hotel with id: {}", id);
 
-        Hotel hotel = hotelRepository.findById(id)
+        Hotel hotel = hotelRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> {
                     log.error("Hotel not found with id: {}", id);
                     return new ResourceNotFoundException("Hotel not found with id: " + id);
@@ -132,8 +135,74 @@ public class HotelServiceImpl implements HotelService {
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<Hotel> hotelPage = hotelRepository.findAll(pageable);
+        Page<Hotel> hotelPage = hotelRepository.findByActiveTrue(pageable);
 
         return hotelPage.map(HotelMapper::toResponseDTO);
     }
+
+    @Override
+    public HotelResponseDTO deleteHotelById(Long id)
+    {
+        Hotel hotel = hotelRepository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> {
+                    log.error("Hotel not found with id: {}", id);
+                    return new ResourceNotFoundException("Hotel not found with id: " + id);
+                });
+
+        try {
+            roomClient.deactivateRoomsByHotelId(id);
+        } catch (Exception ex) {
+            log.error(
+                    "Room deactivation failed for hotelId={}",
+                    id,
+                    ex);
+            throw ex;
+        }
+
+        try {
+            hotelRepository.updateActiveStatus(id, false);
+            hotel.setActive(false);
+        } catch (Exception ex) {
+            log.error(
+                    "Hotel deactivation failed after room cleanup. hotelId={}",
+                    id,
+                    ex);
+            throw ex;
+        }
+
+        return HotelMapper.toResponseDTO(hotel);
+    }
+
+    @Override
+    public HotelResponseDTO reactivateHotelById(Long id) {
+        Hotel hotel = hotelRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Hotel not found with id: {}", id);
+                    return new ResourceNotFoundException("Hotel not found with id: " + id);
+                });
+
+        try {
+            roomClient.reactivateRoomsByHotelId(id);
+        } catch (Exception ex) {
+            log.error(
+                    "Room reactivation failed for hotelId={}",
+                    id,
+                    ex);
+            throw ex;
+        }
+
+        try {
+            hotelRepository.updateActiveStatus(id, true);
+            hotel.setActive(true);
+        } catch (Exception ex) {
+            log.error(
+                    "Hotel reactivation failed after room cleanup. hotelId={}",
+                    id,
+                    ex);
+            throw ex;
+        }
+
+        return HotelMapper.toResponseDTO(hotel);
+    }
+
 }

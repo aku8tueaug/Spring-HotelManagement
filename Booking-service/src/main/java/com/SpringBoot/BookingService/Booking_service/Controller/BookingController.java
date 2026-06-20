@@ -3,13 +3,13 @@ package com.SpringBoot.BookingService.Booking_service.Controller;
 import com.SpringBoot.BookingService.Booking_service.DTO.BookingRequestDTO;
 import com.SpringBoot.BookingService.Booking_service.DTO.BookingResponseDTO;
 import com.SpringBoot.BookingService.Booking_service.Entity.BookingStatus;
+import com.SpringBoot.BookingService.Booking_service.Exception.BookingCreationFailedException;
 import com.SpringBoot.BookingService.Booking_service.Service.BookingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -17,43 +17,68 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BookingController {
 
-    private final BookingService bookingService;
+        private final BookingService bookingService;
 
-    @PostMapping
-    public ResponseEntity<BookingResponseDTO> create(
-            @Valid @RequestBody BookingRequestDTO request) {
-        return ResponseEntity.ok(bookingService.createBooking(request));
-    }
+        @PostMapping
+        public ResponseEntity<BookingResponseDTO> createBooking(
+                        @Valid @RequestBody BookingRequestDTO request) throws BookingCreationFailedException {
 
-    @PostMapping("/{id}/cancel")
-    public ResponseEntity<BookingResponseDTO> cancel(
-            @PathVariable("id") Long bookingId) {
-        return ResponseEntity.ok(bookingService.cancelBooking(bookingId));
-    }
+                return ResponseEntity.ok(
+                                bookingService.createBooking(request));
+        }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<BookingResponseDTO> getById(
-            @PathVariable("id") Long bookingId) {
-        return ResponseEntity.ok(bookingService.getBookingById(bookingId));
-    }
+        @PostMapping("/{bookingId}/cancel")
+        public ResponseEntity<BookingResponseDTO> cancelBooking(
+                        @PathVariable Long bookingId) {
 
-    @GetMapping("bookingByStatus/{bookingStatus}")
-    public ResponseEntity<List<BookingResponseDTO>> getBookingByStatus(@PathVariable("bookingStatus") String bookingStatus)
-    {
-       return ResponseEntity.ok(bookingService.getBookingsByStatus(bookingStatus));
-    }
+                return ResponseEntity.ok(
+                                bookingService.cancelBooking(bookingId));
+        }
 
-    @GetMapping("/bookingByRoomNumber/{roomNumber}")
-    public ResponseEntity<BookingResponseDTO> getBookingByRoomNumber(
-            @PathVariable("roomNumber") String roomNumber) {
-        return ResponseEntity.ok(bookingService.getBookingByRoomNumber(roomNumber));
-    }
-    @PutMapping("/additionalCharges")
-    public ResponseEntity<BookingResponseDTO> addAdditionalCharges(
-            @RequestParam Long bookingId,
-            @RequestParam BigDecimal extraCharges) {
+        @GetMapping("/{bookingId}")
+        public ResponseEntity<BookingResponseDTO> getBooking(
+                        @PathVariable Long bookingId) {
 
-        BookingResponseDTO updatedBooking = bookingService.addAdditionalCharges(bookingId, extraCharges);
-        return ResponseEntity.ok(updatedBooking);
-    }
+                return ResponseEntity.ok(
+                                bookingService.getBooking(bookingId));
+        }
+
+        @GetMapping("/status/{status}")
+        public ResponseEntity<List<BookingResponseDTO>> getBookingsByStatus(
+                        @PathVariable BookingStatus status) {
+
+                return ResponseEntity.ok(
+                                bookingService.getBookingsByStatus(status));
+        }
+
+        @GetMapping("/user/{userId}")
+        public ResponseEntity<List<BookingResponseDTO>> getBookingsByUserId(
+                        @PathVariable Long userId) {
+
+                return ResponseEntity.ok(
+                                bookingService.getBookingsByUserId(userId));
+        }
+
+        @GetMapping("/hotel/{hotelId}")
+        public ResponseEntity<List<BookingResponseDTO>> getBookingsByHotelId(
+                        @PathVariable Long hotelId) {
+
+                return ResponseEntity.ok(
+                                bookingService.getBookingsByHotelId(hotelId));
+        }
+
+        @PostMapping("/{bookingId}/check-in")
+        public ResponseEntity<BookingResponseDTO> checkIn(
+                        @PathVariable Long bookingId) {
+                return ResponseEntity.ok(
+                                bookingService.checkIn(bookingId));
+        }
+
+        @PostMapping("/{bookingId}/check-out")
+        public ResponseEntity<BookingResponseDTO> checkOut(
+                        @PathVariable Long bookingId) {
+                return ResponseEntity.ok(
+                                bookingService.checkOut(bookingId));
+        }
+
 }

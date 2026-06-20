@@ -1,99 +1,101 @@
 package com.SpringBoot.RoomService.Room_service.Controller;
 
-import com.SpringBoot.RoomService.Room_service.DTO.CreateMultipleRoomRequestDTO;
-import com.SpringBoot.RoomService.Room_service.DTO.Hotel;
-import com.SpringBoot.RoomService.Room_service.HTTPClient.HotelClient;
-import com.SpringBoot.RoomService.Room_service.Repository.RoomRepository;
-import com.SpringBoot.RoomService.Room_service.Entity.Room;
+import com.SpringBoot.RoomService.Room_service.DTO.*;
 import com.SpringBoot.RoomService.Room_service.Entity.RoomType;
+import com.SpringBoot.RoomService.Room_service.Service.RoomService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpClientErrorException;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 @RequestMapping("/rooms")
 public class RoomController {
 
-    private final RoomRepository roomRepository;
-    private final HotelClient hotelClient;
+    private final RoomService roomService;
 
-    public RoomController( RoomRepository roomRepository,HotelClient hotelClient)
+    public RoomController( RoomService roomService)
     {
-        this.roomRepository = roomRepository;
-        this.hotelClient = hotelClient;
+        this.roomService = roomService;
     }
 
     @GetMapping
-    public List<Room> getAllRooms()
+    public ResponseEntity<List<ResponseRoomDTO>> Rooms()
     {
-        return roomRepository.findAll();
+
+        List<ResponseRoomDTO> responseRoomDTOList = roomService.getAllRooms();
+
+        return ResponseEntity.ok(responseRoomDTOList);
     }
 
     @PostMapping
-    public ResponseEntity<?> addRoom(@RequestBody @Valid Room room) {
-            Hotel hotel = hotelClient.getHotelById(room.getHotelId());
+    public ResponseEntity<ResponseRoomDTO> addRoom(@RequestBody @Valid CreateRoomRequestDTO room) {
 
-            Room savedRoom = roomRepository.save(room);
+            ResponseRoomDTO responseRoomDTO = roomService.addRoom(room);
             return ResponseEntity
                     .status(HttpStatus.CREATED)
-                    .body(savedRoom);
+                    .body(responseRoomDTO);
     }
 
-    @PostMapping("/multiRoomAdd")
-    public ResponseEntity<?> addMultipleRoom(@RequestBody @Valid CreateMultipleRoomRequestDTO multipleRoomRequestDTO) {
-        Hotel hotel = hotelClient.getHotelById(multipleRoomRequestDTO.HotelId());
+    @PostMapping("/batch")
+    public ResponseEntity<List<ResponseRoomDTO>> addMultipleRoom(@RequestBody @Valid CreateMultipleRoomRequestDTO multipleRoomRequestDTO) {
 
-        RoomType roomType = RoomType.valueOf(multipleRoomRequestDTO.roomType().toUpperCase());
-        List<Room> rooms = new ArrayList<>();
-        for(int i=0;i< multipleRoomRequestDTO.noOfRoomToBeCreate();i++)
-        {
-            String roomNumber = multipleRoomRequestDTO.HotelId().toString()
-                                + roomType.toString().substring(0,2)
-                                + multipleRoomRequestDTO.floorNumber().toString()
-                                + String.format("%03d", (multipleRoomRequestDTO.idStart()+i));
-            Room room = Room.builder()
-                    .hotelId(multipleRoomRequestDTO.HotelId())
-                    .roomNumber(roomNumber)
-                    .roomType(roomType)
-                    .isAvailable(multipleRoomRequestDTO.isAvailable())
-                    .build();
-            rooms.add(room);
-        }
-        List<Room> savedRoom =  roomRepository.saveAll(rooms);
+        List<ResponseRoomDTO> savedRoom =  roomService.addMultipleRoom(multipleRoomRequestDTO);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(savedRoom);
     }
-    @GetMapping("/available")
-    public List<Room> getAvailableRooms()
+
+    @GetMapping("/active")
+    public ResponseEntity<List<ResponseRoomDTO>> getActiveRooms()
     {
-        return roomRepository.findByIsAvailableTrue();
+        List<ResponseRoomDTO> responseRoomDTOList = roomService.getActiveRooms();
+
+        return ResponseEntity.ok(responseRoomDTOList);
     }
 
     @GetMapping("/type/{roomType}")
-    public List<Room> getRoomByRoomType(@PathVariable("roomType") String roomType)
+    public ResponseEntity<List<ResponseRoomDTO>> getRoomByRoomType(@PathVariable("roomType") RoomType roomType)
     {
-        RoomType roomType1 = RoomType.valueOf(roomType.toUpperCase());
-        return roomRepository.findByRoomType(roomType1);
+        List<ResponseRoomDTO> responseRoomDTOList = roomService.getRoomByRoomType(roomType);
+
+        return ResponseEntity.ok(responseRoomDTOList);
     }
 
-    @GetMapping("hotels/{hotelId}")
-    public  ResponseEntity<?> getRoomByHotelId(@PathVariable("hotelId") Long hotelId)
+    @GetMapping("/hotels/{hotelId}")
+    public  ResponseEntity<List<ResponseRoomDTO>> getRoomByHotelId(@PathVariable("hotelId") Long hotelId)
     {
-            Hotel hotel = hotelClient.getHotelById(hotelId);
-            List<Room> rooms= roomRepository.findByHotelId(hotelId);   // return a list of room List<Room>
-            return ResponseEntity.ok(rooms);
+
+        List<ResponseRoomDTO> responseRoomDTOList = roomService.getRoomByHotelId(hotelId); // return a list of room List<Room>
+            return ResponseEntity.ok(responseRoomDTOList);
 
     }
-    @GetMapping("/{roomNumber}")
-    public ResponseEntity<?> getRoomByRoomNumber(@PathVariable("roomNumber") String roomNumber)
+    @GetMapping("/number/{roomNumber}")
+    public ResponseEntity<ResponseRoomDTO> getRoomByRoomNumber(@PathVariable("roomNumber") String roomNumber)
     {
-        return ResponseEntity.ok(roomRepository.findByRoomNumber(roomNumber));
+        return ResponseEntity.ok(roomService.getRoomByRoomNumber(roomNumber));
+    }
+
+    @PatchMapping("/{roomId}")
+    public ResponseEntity<ResponseRoomDTO> updateRoom(
+            @PathVariable Long roomId,
+            @RequestBody @Valid UpdateRoomRequestDTO request
+    ) {
+
+        ResponseRoomDTO response =
+                roomService.updateRoom(roomId, request);
+
+        return ResponseEntity.ok(response);
+    }
+
+
+    @GetMapping("/hotel/{hotelId}/type/{roomType}")
+    public ResponseEntity<List<RoomSummaryDTO>> getRoomsByHotelAndType(@PathVariable Long hotelId,
+                                                                       @PathVariable RoomType roomType)
+    {
+        return ResponseEntity.ok(roomService.getRoomByHotelIdAndRoomType(hotelId,roomType));
     }
 
 

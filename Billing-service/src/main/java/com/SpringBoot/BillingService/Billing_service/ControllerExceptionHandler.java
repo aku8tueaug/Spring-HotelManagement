@@ -1,6 +1,7 @@
 package com.SpringBoot.BillingService.Billing_service;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,9 +15,8 @@ import java.util.stream.Collectors;
 public class ControllerExceptionHandler {
 
     @ExceptionHandler(NoSuchElementException.class)
-    public ErrorResponse notFound(NoSuchElementException ex)
-    {
-        return ErrorResponse.create(ex, HttpStatus.NOT_FOUND,ex.getMessage());
+    public ErrorResponse notFound(NoSuchElementException ex) {
+        return ErrorResponse.create(ex, HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -32,8 +32,18 @@ public class ControllerExceptionHandler {
                 .build();
     }
 
-//    @ExceptionHandler(NoSuchElementException.class)
-//    public ResponseEntity<String> handleNoSuchElementException(NoSuchElementException ex) {
-//        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
-//    }
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ErrorResponse handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ErrorResponse.create(ex, HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ErrorResponse handleIllegalStateException(IllegalStateException ex) {
+        return ErrorResponse.create(ex, HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ErrorResponse handleOptimisticLocking(ObjectOptimisticLockingFailureException ex) {
+        return ErrorResponse.create(ex, HttpStatus.CONFLICT, "Concurrent modification detected: " + ex.getMessage());
+    }
 }

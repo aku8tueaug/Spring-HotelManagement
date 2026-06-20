@@ -1,9 +1,6 @@
 package com.SpringBoot.RoomService.Room_service.Entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Data
@@ -14,7 +11,7 @@ import lombok.*;
 @Table(
         name = "room",
         uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"room_number"})
+                @UniqueConstraint(columnNames = {"hotel_id","room_number"})
         }
 )
 public class Room {
@@ -22,17 +19,18 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long roomId;
 
-    @NotNull(message = "Hotel ID is required")
+    @Column(name = "hotel_id", nullable = false)
     Long hotelId;
 
-    @NotBlank(message = "Room Number is required")
+    @Column(name = "room_number", nullable = false)
     String roomNumber;
 
-    @NotNull(message = "Room Type must be specified")
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     RoomType roomType;
 
-    @NotNull(message = "Availability status is required")
-    boolean isAvailable;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    RoomStatus status;
 
 }

@@ -15,7 +15,6 @@ public class HotelUpdateRequestDTO {
     @Size(max = 150)
     private String name;
 
-    @Valid
     private AddressDTO address;
 
     @Min(1)

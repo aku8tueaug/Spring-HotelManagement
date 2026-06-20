@@ -6,21 +6,22 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
+
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -40,24 +41,29 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         // ✅ Validate and authenticate
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if ( username != null
+                && SecurityContextHolder.getContext().getAuthentication() == null
+                && jwtService.isTokenValid(jwt) ) {
 
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            // Extract Roles
+            List<String> roles = jwtService.extractRoles(jwt);
 
-            if (jwtService.isTokenValid(jwt, userDetails)) {
+            List<GrantedAuthority> authorities =
+                    roles.stream()
+                            .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role))
+                            .toList();
 
-                UsernamePasswordAuthenticationToken authToken =
+            UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
-                                userDetails,
+                                username,
                                 null,
-                                userDetails.getAuthorities()
+                                authorities
                         );
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 // 🔥 Set authentication
                 SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
         }
 
         // Continue request
