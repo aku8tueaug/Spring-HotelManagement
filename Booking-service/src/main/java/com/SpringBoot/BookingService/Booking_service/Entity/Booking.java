@@ -55,6 +55,10 @@ public class Booking {
 
     private LocalDateTime actualCheckOutDateTime;
 
+    private BigDecimal totalAmount;
+    private BigDecimal taxAmount;
+    private BigDecimal finalAmount;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     private BookingStatus status;

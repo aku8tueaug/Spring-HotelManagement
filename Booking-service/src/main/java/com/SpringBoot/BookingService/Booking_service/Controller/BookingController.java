@@ -3,6 +3,7 @@ package com.SpringBoot.BookingService.Booking_service.Controller;
 import com.SpringBoot.BookingService.Booking_service.DTO.BookingRequestDTO;
 import com.SpringBoot.BookingService.Booking_service.DTO.BookingResponseDTO;
 import com.SpringBoot.BookingService.Booking_service.Entity.BookingStatus;
+import com.SpringBoot.BookingService.Booking_service.Exception.BookingCreationFailedException;
 import com.SpringBoot.BookingService.Booking_service.Service.BookingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,74 +17,68 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BookingController {
 
-    private final BookingService bookingService;
-    @PostMapping
-    public ResponseEntity<BookingResponseDTO> createBooking(
-            @Valid @RequestBody BookingRequestDTO request) {
+        private final BookingService bookingService;
 
-        return ResponseEntity.ok(
-                bookingService.createBooking(request)
-        );
-    }
+        @PostMapping
+        public ResponseEntity<BookingResponseDTO> createBooking(
+                        @Valid @RequestBody BookingRequestDTO request) throws BookingCreationFailedException {
 
-    @PostMapping("/{bookingId}/cancel")
-    public ResponseEntity<BookingResponseDTO> cancelBooking(
-            @PathVariable Long bookingId) {
+                return ResponseEntity.ok(
+                                bookingService.createBooking(request));
+        }
 
-        return ResponseEntity.ok(
-                bookingService.cancelBooking(bookingId)
-        );
-    }
+        @PostMapping("/{bookingId}/cancel")
+        public ResponseEntity<BookingResponseDTO> cancelBooking(
+                        @PathVariable Long bookingId) {
 
-    @GetMapping("/{bookingId}")
-    public ResponseEntity<BookingResponseDTO> getBooking(
-            @PathVariable Long bookingId) {
+                return ResponseEntity.ok(
+                                bookingService.cancelBooking(bookingId));
+        }
 
-        return ResponseEntity.ok(
-                bookingService.getBooking(bookingId)
-        );
-    }
+        @GetMapping("/{bookingId}")
+        public ResponseEntity<BookingResponseDTO> getBooking(
+                        @PathVariable Long bookingId) {
 
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<BookingResponseDTO>> getBookingsByStatus(
-            @PathVariable BookingStatus status) {
+                return ResponseEntity.ok(
+                                bookingService.getBooking(bookingId));
+        }
 
-        return ResponseEntity.ok(
-                bookingService.getBookingsByStatus(status)
-        );
-    }
+        @GetMapping("/status/{status}")
+        public ResponseEntity<List<BookingResponseDTO>> getBookingsByStatus(
+                        @PathVariable BookingStatus status) {
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<BookingResponseDTO>> getBookingsByUserId(
-            @PathVariable Long userId) {
+                return ResponseEntity.ok(
+                                bookingService.getBookingsByStatus(status));
+        }
 
-        return ResponseEntity.ok(
-                bookingService.getBookingsByUserId(userId)
-        );
-    }
+        @GetMapping("/user/{userId}")
+        public ResponseEntity<List<BookingResponseDTO>> getBookingsByUserId(
+                        @PathVariable Long userId) {
 
-    @GetMapping("/hotel/{hotelId}")
-    public ResponseEntity<List<BookingResponseDTO>> getBookingsByHotelId(
-            @PathVariable Long hotelId) {
+                return ResponseEntity.ok(
+                                bookingService.getBookingsByUserId(userId));
+        }
 
-        return ResponseEntity.ok(
-                bookingService.getBookingsByHotelId(hotelId)
-        );
-    }
-    @PostMapping("/{bookingId}/check-in")
-    public ResponseEntity<BookingResponseDTO> checkIn(
-            @PathVariable Long bookingId) {
-        return ResponseEntity.ok(
-                bookingService.checkIn(bookingId)
-        );
-    }
+        @GetMapping("/hotel/{hotelId}")
+        public ResponseEntity<List<BookingResponseDTO>> getBookingsByHotelId(
+                        @PathVariable Long hotelId) {
 
-    @PostMapping("/{bookingId}/check-out")
-    public ResponseEntity<BookingResponseDTO> checkOut(
-            @PathVariable Long bookingId) {
-        return ResponseEntity.ok(
-                bookingService.checkOut(bookingId)
-        );
-    }
+                return ResponseEntity.ok(
+                                bookingService.getBookingsByHotelId(hotelId));
+        }
+
+        @PostMapping("/{bookingId}/check-in")
+        public ResponseEntity<BookingResponseDTO> checkIn(
+                        @PathVariable Long bookingId) {
+                return ResponseEntity.ok(
+                                bookingService.checkIn(bookingId));
+        }
+
+        @PostMapping("/{bookingId}/check-out")
+        public ResponseEntity<BookingResponseDTO> checkOut(
+                        @PathVariable Long bookingId) {
+                return ResponseEntity.ok(
+                                bookingService.checkOut(bookingId));
+        }
 
 }

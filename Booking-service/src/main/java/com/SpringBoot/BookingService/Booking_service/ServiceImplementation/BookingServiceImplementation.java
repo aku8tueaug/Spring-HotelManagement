@@ -1,5 +1,6 @@
 package com.SpringBoot.BookingService.Booking_service.ServiceImplementation;
 
+import com.SpringBoot.BookingService.Booking_service.Client.BillingClient;
 import com.SpringBoot.BookingService.Booking_service.Client.InventoryClient;
 import com.SpringBoot.BookingService.Booking_service.Client.RoomClient;
 import com.SpringBoot.BookingService.Booking_service.DTO.*;
@@ -8,6 +9,8 @@ import com.SpringBoot.BookingService.Booking_service.Entity.BookingStatus;
 import com.SpringBoot.BookingService.Booking_service.Entity.Guest;
 import com.SpringBoot.BookingService.Booking_service.Repository.BookingRepository;
 import com.SpringBoot.BookingService.Booking_service.Service.BookingService;
+import com.SpringBoot.BookingService.Booking_service.Exception.BookingCreationFailedException;
+import com.SpringBoot.BookingService.Booking_service.Exception.InsufficientInventoryException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +28,10 @@ public class BookingServiceImplementation implements BookingService {
     private final BookingRepository bookingRepository;
     private final InventoryClient inventoryClient;
     private final RoomClient roomClient;
+    private final BillingClient billingClient;
 
     @Override
-    public BookingResponseDTO createBooking(BookingRequestDTO request) {
+    public BookingResponseDTO createBooking(BookingRequestDTO request) throws BookingCreationFailedException {
             isCheckOutDateAfterCheckInDate(request);
 
             InventoryAvailabilityRequestDTO availabilityRequestDTO =
@@ -39,10 +43,24 @@ public class BookingServiceImplementation implements BookingService {
 
             if(!available)
             {
-                throw  new IllegalStateException("Requested Room is not available");
+                throw new InsufficientInventoryException("Requested Room is not available");
             }
 
+            // Pricing Calculation
+            PriceRequestDTO priceRequest = new PriceRequestDTO(
+                    request.hotelId(),
+                    request.roomType(),
+                    request.checkInDateTime().toLocalDate(),
+                    request.checkOutDateTime().toLocalDate(),
+                    request.guests().size()
+            );
+            PriceResponseDTO priceResponse = billingClient.calculatePrice(priceRequest);
+
             Booking booking = bookReqDTO_To_BookingEntity(request);
+            booking.setTotalAmount(priceResponse.subtotal());
+            booking.setTaxAmount(priceResponse.taxAmount());
+            booking.setFinalAmount(priceResponse.finalAmount());
+
             //Saving Booking Initiated state
             booking = bookingRepository.save(booking);
             try
@@ -52,12 +70,20 @@ public class BookingServiceImplementation implements BookingService {
                 inventoryClient.reserveInventory(reservationRequestDTO);
                 booking.setStatus(BookingStatus.CONFIRMED);
                 booking = bookingRepository.save(booking);
+
+                // Create invoice after booking confirmation
+                billingClient.createInvoice(new InvoiceRequestDTO(
+                        booking.getBookingId(),
+                        booking.getTotalAmount(),
+                        booking.getTaxAmount(),
+                        booking.getFinalAmount()
+                ));
             }
             catch (Exception e)
             {
                 booking.setStatus(BookingStatus.CANCELED);
                 bookingRepository.save(booking);
-                throw new RuntimeException(" Booking Creation Failed ", e);
+                throw new BookingCreationFailedException(" Booking Creation Failed ", e);
             }
 
             return bookingEntity_To_BookingRespDTO(booking);
@@ -81,6 +107,14 @@ public class BookingServiceImplementation implements BookingService {
 
         booking.setStatus(BookingStatus.CANCELED);
         booking = bookingRepository.save(booking);
+
+        // Cancel billing invoice
+        try {
+            billingClient.cancelInvoice(bookingId);
+        } catch (Exception e) {
+            // Log warning but allow cancellation flow to complete
+        }
+
         return bookingEntity_To_BookingRespDTO(booking);
     }
 
@@ -208,10 +242,10 @@ public class BookingServiceImplementation implements BookingService {
 
     private boolean isCheckOutDateAfterCheckInDate(BookingRequestDTO requestDTO)
     {
-        if(requestDTO.checkOutDateTime().isBefore(requestDTO.checkInDateTime()))
+        if (!requestDTO.checkOutDateTime().toLocalDate().isAfter(requestDTO.checkInDateTime().toLocalDate()))
         {
             throw new IllegalArgumentException(
-                    "Check-out date cannot be before check-in date");
+                    "Check-out date must be at least 1 day after check-in date");
         }
         return  true;
     }
@@ -222,7 +256,7 @@ public class BookingServiceImplementation implements BookingService {
                 requestDTO.hotelId(),
                 requestDTO.roomType(),
                 requestDTO.checkInDateTime().toLocalDate(),
-                requestDTO.checkOutDateTime().toLocalDate(),
+                requestDTO.checkOutDateTime().toLocalDate().minusDays(1),
                 requestDTO.roomCount()
         );
     }
@@ -247,7 +281,7 @@ public class BookingServiceImplementation implements BookingService {
                 requestDTO.hotelId(),
                 requestDTO.roomType(),
                 requestDTO.checkInDateTime().toLocalDate(),
-                requestDTO.checkOutDateTime().toLocalDate(),
+                requestDTO.checkOutDateTime().toLocalDate().minusDays(1),
                 requestDTO.roomCount()
         );
     }
@@ -258,7 +292,7 @@ public class BookingServiceImplementation implements BookingService {
                 booking.getHotelId(),
                 booking.getRoomType(),
                 booking.getPlannedCheckInDateTime().toLocalDate(),
-                booking.getPlannedCheckOutDateTime().toLocalDate(),
+                booking.getPlannedCheckOutDateTime().toLocalDate().minusDays(1),
                 booking.getRoomCount()
         );
     }
@@ -277,7 +311,10 @@ public class BookingServiceImplementation implements BookingService {
                 booking.getBookingDate(),
                 booking.getPlannedCheckInDateTime(),
                 booking.getPlannedCheckOutDateTime(),
-                booking.getStatus()
+                booking.getStatus(),
+                booking.getTotalAmount(),
+                booking.getTaxAmount(),
+                booking.getFinalAmount()
         );
     }
 

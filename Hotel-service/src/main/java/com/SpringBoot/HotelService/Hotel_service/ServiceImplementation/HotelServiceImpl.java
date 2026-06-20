@@ -24,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 @Slf4j
 public class HotelServiceImpl implements HotelService {
 
@@ -32,6 +31,7 @@ public class HotelServiceImpl implements HotelService {
     private final RoomClient roomClient;
 
     @Override
+    @Transactional
     public HotelResponseDTO createHotel(HotelCreateRequestDTO request) {
         log.info("Creating hotel with name: {}", request.name());
         Hotel hotel = HotelMapper.toEntity(request);
@@ -42,6 +42,7 @@ public class HotelServiceImpl implements HotelService {
     }
 
     @Override
+    @Transactional
     public HotelResponseDTO updateHotel(Long id, HotelUpdateRequestDTO dto) {
         log.info("Updating hotel with id: {}", id);
         Hotel hotel = hotelRepository.findByIdAndActiveTrue(id)
@@ -159,8 +160,8 @@ public class HotelServiceImpl implements HotelService {
         }
 
         try {
+            hotelRepository.updateActiveStatus(id, false);
             hotel.setActive(false);
-            hotelRepository.save(hotel);
         } catch (Exception ex) {
             log.error(
                     "Hotel deactivation failed after room cleanup. hotelId={}",
@@ -191,8 +192,8 @@ public class HotelServiceImpl implements HotelService {
         }
 
         try {
+            hotelRepository.updateActiveStatus(id, true);
             hotel.setActive(true);
-            hotelRepository.save(hotel);
         } catch (Exception ex) {
             log.error(
                     "Hotel reactivation failed after room cleanup. hotelId={}",

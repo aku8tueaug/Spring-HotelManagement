@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.resource.NoResourceFoundException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -135,49 +137,67 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public void deactivateRoomsByHotelId(Long hotelId) {
-
         List<Room> rooms = roomRepository.findByHotelId(hotelId);
+        Map<RoomType, Integer> activeCounts = new HashMap<>();
+        Map<RoomType, Integer> blockedCounts = new HashMap<>();
+
         for (Room room : rooms) {
-            if(room.getStatus() == RoomStatus.INACTIVE)
+            if (room.getStatus() == RoomStatus.INACTIVE) {
                 continue;
-
-            if(room.getStatus() == RoomStatus.ACTIVE)
-            {
-                inventoryClient.decreaseInventory(
-                        entityToInventoryAdjustmentRequestDTO(room)
-                );
-            }else if(room.getStatus().isBlocked())
-            {
-                inventoryClient.unblockInventory(
-                        entityToInventoryAdjustmentRequestDTO(room)
-                );
-
-                inventoryClient.decreaseInventory(
-                        entityToInventoryAdjustmentRequestDTO(room)
-                );
+            }
+            if (room.getStatus() == RoomStatus.ACTIVE) {
+                activeCounts.put(room.getRoomType(), activeCounts.getOrDefault(room.getRoomType(), 0) + 1);
+            } else if (room.getStatus().isBlocked()) {
+                blockedCounts.put(room.getRoomType(), blockedCounts.getOrDefault(room.getRoomType(), 0) + 1);
             }
             room.setStatus(RoomStatus.INACTIVE);
         }
 
-        //if there is an reservation.
+        activeCounts.forEach((roomType, count) -> {
+            if (count > 0) {
+                inventoryClient.decreaseInventory(
+                        new InventoryAdjustmentRequestDTO(hotelId, roomType, count, defaultHorizonDays)
+                );
+            }
+        });
+
+        blockedCounts.forEach((roomType, count) -> {
+            if (count > 0) {
+                inventoryClient.unblockInventory(
+                        new InventoryAdjustmentRequestDTO(hotelId, roomType, count, defaultHorizonDays)
+                );
+                inventoryClient.decreaseInventory(
+                        new InventoryAdjustmentRequestDTO(hotelId, roomType, count, defaultHorizonDays)
+                );
+            }
+        });
+
         roomRepository.saveAll(rooms);
     }
 
     @Override
     public void reactivateRoomsByHotelId(Long hotelId) {
         List<Room> rooms = roomRepository.findByHotelId(hotelId);
-        for (Room room : rooms) {
-            if(room.getStatus() == RoomStatus.ACTIVE)
-                continue;
+        Map<RoomType, Integer> inactiveCounts = new HashMap<>();
 
-            if(room.getStatus() == RoomStatus.INACTIVE)
-            {
-                inventoryClient.increaseInventory(
-                        entityToInventoryAdjustmentRequestDTO(room)
-                );
+        for (Room room : rooms) {
+            if (room.getStatus() == RoomStatus.ACTIVE) {
+                continue;
+            }
+            if (room.getStatus() == RoomStatus.INACTIVE) {
+                inactiveCounts.put(room.getRoomType(), inactiveCounts.getOrDefault(room.getRoomType(), 0) + 1);
             }
             room.setStatus(RoomStatus.ACTIVE);
         }
+
+        inactiveCounts.forEach((roomType, count) -> {
+            if (count > 0) {
+                inventoryClient.increaseInventory(
+                        new InventoryAdjustmentRequestDTO(hotelId, roomType, count, defaultHorizonDays)
+                );
+            }
+        });
+
         roomRepository.saveAll(rooms);
     }
 

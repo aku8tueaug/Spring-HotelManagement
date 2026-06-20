@@ -4,6 +4,7 @@ import com.SpringBoot.BookingService.Booking_service.Entity.RoomType;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
@@ -16,7 +17,7 @@ public record BookingRequestDTO(
         @NotNull Long userId,
         @Min(1)
         @NotNull Integer roomCount,
-        @Min(1)
+        @NotEmpty
         @NotNull
         List<GuestDTO> guests,
         @FutureOrPresent

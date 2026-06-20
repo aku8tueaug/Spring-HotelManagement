@@ -1,23 +1,24 @@
 package com.SpringBoot.BillingService.Billing_service.PricingService.Entity;
 
-
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
+@Table(name = "rate_plans")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RoomPricing {
+public class RatePlan {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long ratePlanId;
 
     @NotNull(message = "Hotel ID is required")
     private Long hotelId;
@@ -30,12 +31,15 @@ public class RoomPricing {
     @DecimalMin(value = "0.0", inclusive = false, message = "Base price must be greater than 0")
     private BigDecimal basePrice;
 
-    @NotNull(message = "Weekend multiplier is required")
-    @DecimalMin(value = "0.0", inclusive = true, message = "Weekend multiplier must be non-negative")
-    private BigDecimal weekendMultiplier;
+    @NotNull(message = "Start date is required")
+    private LocalDate startDate;
 
-    @NotNull(message = "Seasonal multiplier is required")
-    @DecimalMin(value = "0.0", inclusive = true, message = "Seasonal multiplier must be non-negative")
-    private BigDecimal seasonalMultiplier;
+    @NotNull(message = "End date is required")
+    private LocalDate endDate;
 
+    @NotNull
+    private Boolean active;
+
+    @Version
+    private Long version;
 }

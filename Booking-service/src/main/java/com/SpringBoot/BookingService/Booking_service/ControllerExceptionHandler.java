@@ -1,6 +1,7 @@
 package com.SpringBoot.BookingService.Booking_service;
 
 import com.SpringBoot.BookingService.Booking_service.Exception.ApiError;
+import com.SpringBoot.BookingService.Booking_service.Exception.BookingCreationFailedException;
 import com.SpringBoot.BookingService.Booking_service.Exception.InsufficientInventoryException;
 import com.SpringBoot.BookingService.Booking_service.Exception.ResourceNotFoundException;
 import jakarta.validation.ConstraintViolationException;
@@ -112,5 +113,19 @@ public class ControllerExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(BookingCreationFailedException.class)
+    public ResponseEntity<ApiError> handleBookingCreationFailed(BookingCreationFailedException ex) {
+
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error("Booking Creation Failed")
+                .message(ex.getMessage())
+                .details(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
