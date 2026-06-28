@@ -120,12 +120,13 @@ public class BookingServiceImplementation implements BookingService {
 
     @Override
     @Transactional(readOnly = true)
-    public BookingResponseDTO getBooking(Long bookingId) {
+    public BookingResponseDTO getBookingById(Long bookingId) {
         Booking booking =bookingRepository.findById(bookingId)
                         .orElseThrow(() -> new IllegalArgumentException("Booking not found" ));
 
         return bookingEntity_To_BookingRespDTO(booking);
     }
+
 
     @Override
     public List<BookingResponseDTO> getBookingsByStatus(BookingStatus status) {

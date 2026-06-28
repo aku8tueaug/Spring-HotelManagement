@@ -9,6 +9,7 @@ import com.SpringBoot.InventoryService.Inventory_service.Repository.InventoryRep
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,13 +25,15 @@ import java.util.stream.Collectors;
 @Slf4j
 public class InventoryServiceImpl implements InventoryService {
 
+    @Value("${inventory.defaultHorizonDays}")
+    private Integer defaultHorizonDays;
     private final InventoryRepository inventoryRepository;
 
     @Override
     public void increaseInventory(InventoryAdjustmentRequestDTO request) {
         log.info("ENTERED INCREASE");
         LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.plusDays(request.horizonDays() - 1);
+        LocalDate endDate = startDate.plusDays(defaultHorizonDays - 1);
 
         List<Inventory> existingInventories = inventoryRepository
                 .findByHotelIdAndRoomTypeAndInventoryDateBetween(
@@ -69,7 +72,7 @@ public class InventoryServiceImpl implements InventoryService {
     public void decreaseInventory(InventoryAdjustmentRequestDTO request) {
         log.info("ENTERED DECREASE");
         LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.plusDays(request.horizonDays() - 1);
+        LocalDate endDate = startDate.plusDays(defaultHorizonDays - 1);
 
         List<Inventory> existingInventories = inventoryRepository
                 .findByHotelIdAndRoomTypeAndInventoryDateBetween(
@@ -112,7 +115,7 @@ public class InventoryServiceImpl implements InventoryService {
     public void blockInventory(InventoryAdjustmentRequestDTO request) {
         log.info("ENTERED BLOCK");
         LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.plusDays(request.horizonDays() - 1);
+        LocalDate endDate = startDate.plusDays(defaultHorizonDays - 1);
 
         List<Inventory> existingInventories = inventoryRepository
                 .findByHotelIdAndRoomTypeAndInventoryDateBetween(
@@ -159,7 +162,7 @@ public class InventoryServiceImpl implements InventoryService {
     public void unblockInventory(InventoryAdjustmentRequestDTO request) {
         log.info("ENTERED UNBLOCK");
         LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.plusDays(request.horizonDays() - 1);
+        LocalDate endDate = startDate.plusDays(defaultHorizonDays - 1);
 
         List<Inventory> existingInventories = inventoryRepository
                 .findByHotelIdAndRoomTypeAndInventoryDateBetween(

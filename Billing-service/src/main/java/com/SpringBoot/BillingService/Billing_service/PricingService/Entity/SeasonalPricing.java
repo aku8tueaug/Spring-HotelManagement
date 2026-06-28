@@ -33,8 +33,9 @@ public class SeasonalPricing {
     @NotNull(message = "End date is required")
     private LocalDate endDate;
 
+    @Enumerated(EnumType.STRING)
     @NotBlank(message = "Adjustment type is required")
-    private String adjustmentType; // e.g. MULTIPLIER, FLAT_ADD, FLAT_SUBTRACT
+    private AdjustmentType adjustmentType;
 
     @NotNull(message = "Adjustment value is required")
     private BigDecimal adjustmentValue;

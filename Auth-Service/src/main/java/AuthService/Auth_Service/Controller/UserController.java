@@ -3,12 +3,15 @@ package AuthService.Auth_Service.Controller;
 
 import AuthService.Auth_Service.DTO.ChangePasswordRequest;
 import AuthService.Auth_Service.DTO.CreateUserRequest;
+import AuthService.Auth_Service.DTO.UserResponseDTO;
 import AuthService.Auth_Service.Service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/users")
@@ -69,4 +72,22 @@ public class UserController {
         userService.deactivateUser(username);
         return ResponseEntity.ok("User deactivated");
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/{username}")
+    public ResponseEntity<UserResponseDTO> getUserDetails(@PathVariable String username) {
+        UserResponseDTO userResponseDTO =  userService.getUserByUserName(username);
+        return ResponseEntity.ok(userResponseDTO);
+
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping
+    public ResponseEntity<List<UserResponseDTO>> getUsers() {
+        List<UserResponseDTO> userResponseDTO =  userService.getUsers();
+        return ResponseEntity.ok(userResponseDTO);
+
+    }
+
+
 }

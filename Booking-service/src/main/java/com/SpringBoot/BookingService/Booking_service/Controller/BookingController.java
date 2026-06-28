@@ -36,13 +36,12 @@ public class BookingController {
         }
 
         @GetMapping("/{bookingId}")
-        public ResponseEntity<BookingResponseDTO> getBooking(
+        public ResponseEntity<BookingResponseDTO> getBookingWithId(
                         @PathVariable Long bookingId) {
 
                 return ResponseEntity.ok(
-                                bookingService.getBooking(bookingId));
+                                bookingService.getBookingById(bookingId));
         }
-
         @GetMapping("/status/{status}")
         public ResponseEntity<List<BookingResponseDTO>> getBookingsByStatus(
                         @PathVariable BookingStatus status) {

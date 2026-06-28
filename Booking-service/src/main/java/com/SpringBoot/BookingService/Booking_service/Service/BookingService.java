@@ -14,10 +14,11 @@ import java.util.List;
 public interface BookingService {
     BookingResponseDTO createBooking(BookingRequestDTO request) throws BookingCreationFailedException;
     BookingResponseDTO cancelBooking(Long bookingId);
-    BookingResponseDTO getBooking(Long bookingId);
+    BookingResponseDTO getBookingById(Long bookingId);
     List<BookingResponseDTO> getBookingsByStatus(BookingStatus status);
     List<BookingResponseDTO> getBookingsByUserId(Long userId);
     List<BookingResponseDTO> getBookingsByHotelId(Long hotelId);
     BookingResponseDTO checkIn(Long bookingId);
     BookingResponseDTO checkOut(Long bookingId);
+
 }

@@ -12,6 +12,7 @@ import com.SpringBoot.BillingService.Billing_service.PaymentService.Repository.P
 import com.SpringBoot.BillingService.Billing_service.PaymentService.Services.PaymentService;
 import com.SpringBoot.BillingService.Billing_service.PricingService.DTO.PriceRequestDTO;
 import com.SpringBoot.BillingService.Billing_service.PricingService.DTO.PriceResponseDTO;
+import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.AdjustmentType;
 import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.RatePlan;
 import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.RoomType;
 import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.SeasonalPricing;
@@ -116,7 +117,7 @@ class BillingServiceApplicationTests {
 				.roomType(RoomType.STANDARD)
 				.startDate(LocalDate.of(2026, 6, 20))
 				.endDate(LocalDate.of(2026, 6, 25))
-				.adjustmentType("MULTIPLIER")
+				.adjustmentType(AdjustmentType.MULTIPLIER)
 				.adjustmentValue(BigDecimal.valueOf(1.50))
 				.build();
 		seasonalPricingRepository.save(seasonalPricing);

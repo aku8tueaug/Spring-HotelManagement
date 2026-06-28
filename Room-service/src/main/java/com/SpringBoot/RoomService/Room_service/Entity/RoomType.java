@@ -1,7 +1,8 @@
 package com.SpringBoot.RoomService.Room_service.Entity;
 
 public enum RoomType {
-STANDARD,
+    NEW,
+    STANDARD,
     DELUXE,
     SUITE,
     FAMILY,

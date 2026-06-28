@@ -1,0 +1,16 @@
+package com.SpringBoot.RoomService.Room_service.Entity;
+
+public enum InventoryAction {
+    CREATE_ACTIVE_ROOM,
+    CREATE_BLOCK_ROOM,
+    DELETE_ACTIVE_ROOM,
+    DELETE_BLOCKED_ROOM,
+    ACTIVE_ROOM_TYPE_CHANGE,
+    BLOCKED_ROOM_TYPE_CHANGE,
+    BLOCK_ACTIVE_ROOM,
+    ACTIVATE_BLOCKED_ROOM,
+    INCREASE,
+    DECREASE,
+    BLOCK,
+    UNBLOCK
+}

@@ -1,12 +1,14 @@
 package com.SpringBoot.RoomService.Room_service.ServiceImpl;
 
 import com.SpringBoot.RoomService.Room_service.DTO.*;
+import com.SpringBoot.RoomService.Room_service.Entity.InventoryAction;
 import com.SpringBoot.RoomService.Room_service.Entity.Room;
 import com.SpringBoot.RoomService.Room_service.Entity.RoomStatus;
 import com.SpringBoot.RoomService.Room_service.Entity.RoomType;
 import com.SpringBoot.RoomService.Room_service.Exception.ResourceNotFoundException;
 import com.SpringBoot.RoomService.Room_service.HTTPClient.HotelClient;
 import com.SpringBoot.RoomService.Room_service.HTTPClient.InventoryClient;
+import com.SpringBoot.RoomService.Room_service.Kafka.RoomInventoryEventProducer;
 import com.SpringBoot.RoomService.Room_service.Repository.RoomRepository;
 import com.SpringBoot.RoomService.Room_service.Service.RoomService;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.resource.NoResourceFoundException;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -27,12 +26,12 @@ import java.util.Map;
 @Slf4j
 public class RoomServiceImpl implements RoomService {
 
-    @Value("${inventory.defaultHorizonDays}")
-    private Integer defaultHorizonDays;
+
 
     private final RoomRepository roomRepository;
     private final HotelClient hotelClient;
     private final InventoryClient inventoryClient;
+    private final RoomInventoryEventProducer producer;
 
 
     @Override
@@ -45,24 +44,29 @@ public class RoomServiceImpl implements RoomService {
                 .roomType(roomRequestDTO.roomType())
                 .status(roomRequestDTO.roomStatus())
                 .build();
-
+        // Save 
         Room savedRoom = roomRepository.save(room);
 
-        //Increase Inventory
-        if(savedRoom.getStatus() == RoomStatus.ACTIVE) {
-            inventoryClient.increaseInventory(
-                    entityToInventoryAdjustmentRequestDTO(savedRoom)
-            );
-        } else if (savedRoom.getStatus().isBlocked()) {
-            inventoryClient.increaseInventory(
-                    entityToInventoryAdjustmentRequestDTO(savedRoom)
-            );
-            //Need to block the Inventory
-            inventoryClient.blockInventory(
-                    entityToInventoryAdjustmentRequestDTO(savedRoom)
-            );
-        }
 
+        //Increase Inventory
+         producer.publish(
+                 mapToRoomInventoryEvent(
+                         roomRequestDTO.hotelId(),
+                         roomRequestDTO.roomType(),
+                         1,
+                         InventoryAction.INCREASE)
+         );
+
+        if (room.getStatus().isBlocked()) {
+            producer.publish(
+                    mapToRoomInventoryEvent(
+                            roomRequestDTO.hotelId(),
+                            roomRequestDTO.roomType(),
+                            1,
+                            InventoryAction.BLOCK)
+            );
+
+        }
         return  entityToResponseRoomDTO(savedRoom);
     }
 
@@ -84,17 +88,22 @@ public class RoomServiceImpl implements RoomService {
         }
 
         //Increase Inventory
-        if(multipleRoomRequestDTO.roomStatus() == RoomStatus.ACTIVE) {
-            inventoryClient.increaseInventory(
-                    entityToInventoryAdjustmentRequestDTO(multipleRoomRequestDTO)
-            );
-        } else if(multipleRoomRequestDTO.roomStatus().isBlocked())
+
+        producer.publish(
+                mapToRoomInventoryEvent(
+                        multipleRoomRequestDTO.hotelId(),
+                        multipleRoomRequestDTO.roomType(),
+                        multipleRoomRequestDTO.roomCount(),
+                        InventoryAction.INCREASE)
+        );
+        if(multipleRoomRequestDTO.roomStatus().isBlocked())
         {
-            inventoryClient.increaseInventory(
-                    entityToInventoryAdjustmentRequestDTO(multipleRoomRequestDTO)
-            );
-            inventoryClient.blockInventory(
-                    entityToInventoryAdjustmentRequestDTO(multipleRoomRequestDTO)
+            producer.publish(
+                    mapToRoomInventoryEvent(
+                            multipleRoomRequestDTO.hotelId(),
+                            multipleRoomRequestDTO.roomType(),
+                            multipleRoomRequestDTO.roomCount(),
+                            InventoryAction.BLOCK)
             );
         }
         List<Room> savedRooms = roomRepository.saveAll(rooms);
@@ -153,21 +162,38 @@ public class RoomServiceImpl implements RoomService {
             room.setStatus(RoomStatus.INACTIVE);
         }
 
+        // Decrease the inventory for the rooms which is deactivated directly
         activeCounts.forEach((roomType, count) -> {
             if (count > 0) {
-                inventoryClient.decreaseInventory(
-                        new InventoryAdjustmentRequestDTO(hotelId, roomType, count, defaultHorizonDays)
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                hotelId,
+                                roomType,
+                                count,
+                                InventoryAction.DECREASE)
                 );
             }
         });
 
         blockedCounts.forEach((roomType, count) -> {
             if (count > 0) {
-                inventoryClient.unblockInventory(
-                        new InventoryAdjustmentRequestDTO(hotelId, roomType, count, defaultHorizonDays)
+                // for the blocked the rooms, we need to unblock it first and then decrease the inventory
+
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                hotelId,
+                                roomType,
+                                count,
+                                InventoryAction.UNBLOCK)
                 );
-                inventoryClient.decreaseInventory(
-                        new InventoryAdjustmentRequestDTO(hotelId, roomType, count, defaultHorizonDays)
+                // then decrease the inventory
+
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                hotelId,
+                                roomType,
+                                count,
+                                InventoryAction.DECREASE)
                 );
             }
         });
@@ -192,8 +218,12 @@ public class RoomServiceImpl implements RoomService {
 
         inactiveCounts.forEach((roomType, count) -> {
             if (count > 0) {
-                inventoryClient.increaseInventory(
-                        new InventoryAdjustmentRequestDTO(hotelId, roomType, count, defaultHorizonDays)
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                hotelId,
+                                roomType,
+                                count,
+                                InventoryAction.INCREASE)
                 );
             }
         });
@@ -228,37 +258,76 @@ public class RoomServiceImpl implements RoomService {
             if(room.getStatus() == RoomStatus.ACTIVE)
             {
                 //Decreasing the Previous type total number of room
-                inventoryClient.decreaseInventory(
-                        entityToInventoryAdjustmentRequestDTO(room,oldType)
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                room.getHotelId(),
+                                oldType,
+                                1,
+                                InventoryAction.DECREASE)
                 );
 
                 //Increasing the New Type total number of room
-                inventoryClient.increaseInventory(
-                        entityToInventoryAdjustmentRequestDTO(room,newType)
+//                inventoryClient.increaseInventory(
+//                        entityToInventoryAdjustmentRequestDTO(room,newType)
+//                );
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                room.getHotelId(),
+                                newType,
+                                1,
+                                InventoryAction.INCREASE)
                 );
             } else if (room.getStatus().isBlocked()) {
                 //Unblock the old type first
                 log.info("UNBLOCK OLD {}", oldType);
-                inventoryClient.unblockInventory(
-                        entityToInventoryAdjustmentRequestDTO(room,oldType)
+//                inventoryClient.unblockInventory(
+//                        entityToInventoryAdjustmentRequestDTO(room,oldType)
+//                );
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                room.getHotelId(),
+                                oldType,
+                                1,
+                                InventoryAction.UNBLOCK)
                 );
                 log.info("Unblock completed");
                 //Decrease the old type
                 log.info("DECREASE OLD {}", oldType);
-                inventoryClient.decreaseInventory(
-                        entityToInventoryAdjustmentRequestDTO(room,oldType)
+//                inventoryClient.decreaseInventory(
+//                        entityToInventoryAdjustmentRequestDTO(room,oldType)
+//                );
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                room.getHotelId(),
+                                oldType,
+                                1,
+                                InventoryAction.DECREASE)
                 );
                 log.info("Decrease completed");
                 //Increase the new Type
                 log.info("INCREASE NEW {}", newType);
-                inventoryClient.increaseInventory(
-                        entityToInventoryAdjustmentRequestDTO(room,newType)
+//                inventoryClient.increaseInventory(
+//                        entityToInventoryAdjustmentRequestDTO(room,newType)
+//                );
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                room.getHotelId(),
+                                newType,
+                                1,
+                                InventoryAction.INCREASE)
                 );
                 log.info("Increase completed");
                 //Block the new type
                 log.info("BLOCK NEW {}", newType);
-                inventoryClient.blockInventory(
-                        entityToInventoryAdjustmentRequestDTO(room,newType)
+//                inventoryClient.blockInventory(
+//                        entityToInventoryAdjustmentRequestDTO(room,newType)
+//                );
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                room.getHotelId(),
+                                newType,
+                                1,
+                                InventoryAction.BLOCK)
                 );
                 log.info("Block completed");
 
@@ -276,16 +345,30 @@ public class RoomServiceImpl implements RoomService {
             if(oldStatus == RoomStatus.ACTIVE
                 && newStatus.isBlocked())
             {
-                inventoryClient.blockInventory(
-                        entityToInventoryAdjustmentRequestDTO(room)
+//                inventoryClient.blockInventory(
+//                        entityToInventoryAdjustmentRequestDTO(room)
+//                );
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                room.getHotelId(),
+                                room.getRoomType(),
+                                1,
+                                InventoryAction.BLOCK)
                 );
             }
             //Blocked to Unblocked
             else if(oldStatus.isBlocked()
                     && newStatus == RoomStatus.ACTIVE)
             {
-                inventoryClient.unblockInventory(
-                        entityToInventoryAdjustmentRequestDTO(room));
+//                inventoryClient.unblockInventory(
+//                        entityToInventoryAdjustmentRequestDTO(room));
+                producer.publish(
+                        mapToRoomInventoryEvent(
+                                room.getHotelId(),
+                                room.getRoomType(),
+                                1,
+                                InventoryAction.UNBLOCK)
+                );
             }
 
             room.setStatus(request.roomStatus());
@@ -350,8 +433,7 @@ public class RoomServiceImpl implements RoomService {
             return new InventoryAdjustmentRequestDTO(
                     room.getHotelId(),
                     room.getRoomType(),
-                    1,
-                    defaultHorizonDays
+                    1
             );
     }
 
@@ -362,8 +444,7 @@ public class RoomServiceImpl implements RoomService {
         return new InventoryAdjustmentRequestDTO(
                 roomRequestDTO.hotelId(),
                 roomRequestDTO.roomType(),
-                roomRequestDTO.roomCount(),
-                defaultHorizonDays
+                roomRequestDTO.roomCount()
         );
     }
 
@@ -374,8 +455,21 @@ public class RoomServiceImpl implements RoomService {
         return new InventoryAdjustmentRequestDTO(
                 room.getHotelId(),
                 roomType,
-                1,
-                defaultHorizonDays
+                1
+        );
+    }
+
+    private RoomInventoryEvent mapToRoomInventoryEvent(Long hotelId,
+                                                       RoomType roomType,
+                                                       int roomCount,
+                                                       InventoryAction inventoryAction)
+    {
+        return new RoomInventoryEvent(
+                UUID.randomUUID().toString(),
+                hotelId,
+                roomType,
+                roomCount,
+                inventoryAction
         );
     }
 

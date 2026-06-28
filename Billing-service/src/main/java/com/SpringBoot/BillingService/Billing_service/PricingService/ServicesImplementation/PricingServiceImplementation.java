@@ -3,12 +3,14 @@ package com.SpringBoot.BillingService.Billing_service.PricingService.ServicesImp
 import com.SpringBoot.BillingService.Billing_service.Clients.BookingClient;
 import com.SpringBoot.BillingService.Billing_service.PaymentService.DTO.BookingResponseDTO;
 import com.SpringBoot.BillingService.Billing_service.PricingService.DTO.*;
+import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.AdjustmentType;
 import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.RatePlan;
 import com.SpringBoot.BillingService.Billing_service.PricingService.Entity.SeasonalPricing;
 import com.SpringBoot.BillingService.Billing_service.PricingService.Repository.RatePlanRepository;
 import com.SpringBoot.BillingService.Billing_service.PricingService.Repository.SeasonalPricingRepository;
 import com.SpringBoot.BillingService.Billing_service.PricingService.Services.PricingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,13 @@ public class PricingServiceImplementation implements PricingService {
     private final RatePlanRepository ratePlanRepository;
     private final SeasonalPricingRepository seasonalPricingRepository;
     private final BookingClient bookingClient;
+
+    @Value("${priceService.extraGuest.charge}")
+    private BigDecimal extraGuestCharges;
+
+    private BigDecimal tax12per = new BigDecimal( 0.12);
+    private BigDecimal tax18per = new BigDecimal( 0.18);
+
 
     @Override
     @Transactional(readOnly = true)
@@ -53,13 +62,13 @@ public class PricingServiceImplementation implements PricingService {
                             request.hotelId(), request.roomType(), date, date);
 
             for (SeasonalPricing adjustment : seasonalPricings) {
-                String type = adjustment.getAdjustmentType().toUpperCase();
+                AdjustmentType type = adjustment.getAdjustmentType();
                 BigDecimal val = adjustment.getAdjustmentValue();
-                if ("MULTIPLIER".equals(type) || "PERCENTAGE".equals(type)) {
+                if (AdjustmentType.MULTIPLIER.equals(type) || AdjustmentType.PERCENTAGE.equals(type)) {
                     nightPrice = nightPrice.multiply(val);
-                } else if ("FLAT_ADD".equals(type)) {
+                } else if (AdjustmentType.FLAT_ADD.equals(type)) {
                     nightPrice = nightPrice.add(val);
-                } else if ("FLAT_SUBTRACT".equals(type)) {
+                } else if (AdjustmentType.FLAT_SUBTRACT.equals(type)) {
                     nightPrice = nightPrice.subtract(val);
                 }
             }
@@ -67,19 +76,20 @@ public class PricingServiceImplementation implements PricingService {
             subtotal = subtotal.add(nightPrice);
         }
 
-        // Add extra guest charges if guest count > 2 (add $500 per extra guest per night)
+        // Add extra guest charges if guest count > 2
         if (request.guestCount() > 2) {
+
             int extraGuests = request.guestCount() - 2;
             BigDecimal extraCharges = BigDecimal.valueOf(extraGuests)
-                    .multiply(BigDecimal.valueOf(500))
+                    .multiply(extraGuestCharges)
                     .multiply(BigDecimal.valueOf(nights));
             subtotal = subtotal.add(extraCharges);
         }
 
         // Tax Engine Logic
         BigDecimal taxRate = subtotal.compareTo(BigDecimal.valueOf(1000)) >= 0 
-                ? BigDecimal.valueOf(0.18) 
-                : BigDecimal.valueOf(0.12);
+                ? tax18per
+                : tax12per;
         BigDecimal taxAmount = subtotal.multiply(taxRate);
         BigDecimal finalAmount = subtotal.add(taxAmount);
 

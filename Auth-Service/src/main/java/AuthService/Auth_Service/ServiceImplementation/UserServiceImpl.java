@@ -1,6 +1,6 @@
 package AuthService.Auth_Service.ServiceImplementation;
 
-
+import AuthService.Auth_Service.DTO.UserResponseDTO;
 import AuthService.Auth_Service.Entity.AppUser;
 import AuthService.Auth_Service.Repository.UserRepository;
 import AuthService.Auth_Service.Service.UserService;
@@ -10,13 +10,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-// 🔐 User changes own password
+    // User changes own password
     @Transactional
     @CacheEvict(value = "users", key = "#username")
     public void changePassword(String username, String currentPassword, String newPassword) {
@@ -31,19 +33,17 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
-    //Admin updates role
-
+    // Admin updates role
     @Transactional
     @CacheEvict(value = "users", key = "#username")
     public void updateRole(String username, String role) {
         AppUser user = userRepository.findByUserName(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
         user.setRole(role);
         userRepository.save(user);
     }
 
-    // 👤 Admin creates user
+    // Admin creates user
     @Transactional
     public void createUser(String username, String password, String role) {
 
@@ -59,6 +59,20 @@ public class UserServiceImpl implements UserService {
                 .build());
     }
 
+    @Override
+    public UserResponseDTO getUserByUserName(String userName) {
+        AppUser user = userRepository.findByUserName(userName)
+                .orElseThrow(() -> new RuntimeException("No user with provided userName"));
+        return toResponseDTO(user);
+    }
+
+    @Override
+    public List<UserResponseDTO> getUsers() {
+        List<AppUser> users = userRepository.findAll();
+        return toResponseDTOList(users);
+
+    }
+
     // Admin deactivates user
     @Transactional
     @CacheEvict(value = "users", key = "#username")
@@ -67,5 +81,18 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setActive(false);
         userRepository.save(user);
+    }
+
+    // Helper Method
+    private UserResponseDTO toResponseDTO(AppUser user) {
+        return UserResponseDTO.builder()
+                .userName(user.getUserName())
+                .role(user.getRole())
+                .active(user.getActive())
+                .build();
+    }
+
+    private List<UserResponseDTO> toResponseDTOList(List<AppUser> users ) {
+        return users.stream().map(this::toResponseDTO).toList();
     }
 }
